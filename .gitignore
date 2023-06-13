@@ -1,0 +1,5 @@
+virtual
+image
+.vscode
+.env
+__pycache__
