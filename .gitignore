@@ -3,3 +3,4 @@ image
 .vscode
 .env
 __pycache__
+keys.json
