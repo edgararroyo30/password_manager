@@ -239,11 +239,11 @@ class InstalacionApp:
             print("Los archivos ya existen")
 
     def crear_archivos(self):
-        respaldo_claves = open(self.ubicacion_seleccionada + '/Administrador de contraseñas/backup/.env', 'w')
-        respaldo_claves.write(f"Public_db_key='{public_key_pem.decode()}'\n")
-        respaldo_claves.write(f"Private_db_key='{private_key_pem.decode()}'\n")
-        respaldo_claves.write(f"Public_table_key='{public_key1_pem.decode()}'\n")
-        respaldo_claves.write(f"Private_table_key='{private_key1_pem.decode()}'\n")
+        respaldo_claves = open(self.ubicacion_seleccionada + '/Administrador de contraseñas/backup/keys.json', 'w')
+        respaldo_claves.write(f"PUBLIC_DB_KEY'{public_key_pem.decode()}'\n")
+        respaldo_claves.write(f"PRIVATE_DB_KEY'{private_key_pem.decode()}'\n")
+        respaldo_claves.write(f"PRIVATE_DB_KEY'{public_key1_pem.decode()}'\n")
+        respaldo_claves.write(f"PUBLIC_TABLE_KEY'{private_key1_pem.decode()}'\n")
         respaldo_claves.close()
 
     def introduccion(self):
