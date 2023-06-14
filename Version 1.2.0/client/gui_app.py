@@ -10,7 +10,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from ttkthemes import ThemedStyle
 from model.admin_dao import user, guardar, listar, eliminar, editar
 from model.admin_dao import cuenta_id, solicitar_clave_acceso, save_code, check_code
-from model.key import public_db_key, private_db_key
+from model.key import public_db_key, private_table_key
 
 def generate_password():
     """
@@ -172,8 +172,12 @@ class Frame(ttk.Frame):
             row=5, padx=(16, 16), columnspan=3)
 
         def guardar_datos():
-            encrypted_password = public_db_key().encrypt(
-            self.mi_contrasena_add.get(),
+            public_key_string=public_db_key()
+            public_key_bytes = public_key_string.encode('utf-8')
+            loaded_public_key = serialization.load_pem_public_key(public_key_bytes)
+
+            encrypted_password = loaded_public_key.encrypt(
+            self.mi_contrasena_add.get().encode('utf-8'),
             padding.OAEP(
                 mgf=padding.MGF1(algorithm=hashes.SHA256()),
                 algorithm=hashes.SHA256(),
@@ -291,17 +295,33 @@ class Frame(ttk.Frame):
             row=5, padx=(16, 16), columnspan=3)
 
         def guardar_datos():
+
+            public_key_string=public_db_key()
+            public_key_bytes = public_key_string.encode('utf-8')
+            loaded_public_key = serialization.load_pem_public_key(public_key_bytes)
+
+            encrypted_password = loaded_public_key.encrypt(
+            self.mi_contrasena_edit.get().encode('utf-8'),
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+                )
+            )
+
+
             user_data = user(
                 self.mi_sitio_web_edit.get(),
                 self.mi_nombre_usuario_edit.get(),
-                self.mi_contrasena_edit.get())
+                encrypted_password)
             id = self.id_user = self.tabla.item(self.tabla.selection())['text']
             editar(user_data, id)
 
             self.ventana.destroy()
             self.tabla_de_contrasenas()
             self.pop_menu()
-            self.cuenta_contrasenas
+            self.cuenta_contrasenas()
+           
 
         self.boton_guardar = ttk.Button(
             self.ventana, text='Guardar', command=guardar_datos)
@@ -361,8 +381,14 @@ class Frame(ttk.Frame):
         self.tabla.heading('#2', text='Usuario')
         self.tabla.heading('#3', text='Contraseña')
 
+        private_key_string=private_table_key()
+        private_key_bytes = private_key_string.encode('utf-8')
+        loaded_private_key = serialization.load_pem_private_key(private_key_bytes,password=None)
+
+
         for p in self.lista_usuario:
-            decrypted_password = private_table_key().decrypt(
+
+            decrypted_password =loaded_private_key.decrypt(
             p[3],
             padding.OAEP(
                 mgf=padding.MGF1(algorithm=hashes.SHA256()),
@@ -563,7 +589,6 @@ class Frame(ttk.Frame):
         tree.selection_remove(tree.selection())
         tree.tag_configure("searched_row", background="#373737")
 
-    # buscar coincidencias
         for item in tree.get_children():
             if search_string.lower() in str(tree.item(item)["values"]).lower():
                 # seleccionar y resaltar la fila

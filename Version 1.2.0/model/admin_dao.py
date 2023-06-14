@@ -53,24 +53,43 @@ class user:
 
 def guardar(user_d):
     conexion = ConexionDB()
-    get_password = user_d.password
-    decrypted_data = private_db_key().decrypt(
-    get_password,
+
+    def decrypt_in(user_data):
+
+        private_key_string=private_db_key()
+        private_key_bytes = private_key_string.encode('utf-8')
+        loaded_private_key = serialization.load_pem_private_key(private_key_bytes,password=None)
+
+        get_password = user_data.password
+
+
+        decrypted_data = loaded_private_key.decrypt(
+        get_password,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+            )
+        )
+
+        return decrypted_data
+
+    decrypted_password= decrypt_in(user_d)
+
+
+    public_key_string=public_table_key()
+    public_key_bytes = public_key_string.encode('utf-8')
+    loaded_public_key = serialization.load_pem_public_key(public_key_bytes)
+
+    encrypted_password = loaded_public_key.encrypt(
+    decrypted_password,
     padding.OAEP(
         mgf=padding.MGF1(algorithm=hashes.SHA256()),
         algorithm=hashes.SHA256(),
         label=None
         )
     )
-    encoded_password = decrypted_data.encode()
-    encrypted_password = public_table_key().encrypt(
-    encoded_password,
-    padding.OAEP(
-        mgf=padding.MGF1(algorithm=hashes.SHA256()),
-        algorithm=hashes.SHA256(),
-        label=None
-        )
-    )
+
     get_sitio = user_d.sitio
     get_username = user_d.username
     sql = """
@@ -108,9 +127,41 @@ def listar():
 
 def editar(user_d, id_user):
     conexion = ConexionDB()
-    get_password = user_d.password
-    encoded_password = get_password.encode()
-    encrypted_password = f.encrypt(encoded_password)
+    def decrypt_in(user_data):
+
+        private_key_string=private_db_key()
+        private_key_bytes = private_key_string.encode('utf-8')
+        loaded_private_key = serialization.load_pem_private_key(private_key_bytes,password=None)
+
+        get_password = user_data.password
+
+
+        decrypted_data = loaded_private_key.decrypt(
+        get_password,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+            )
+        )
+
+        return decrypted_data
+
+    decrypted_password= decrypt_in(user_d)
+
+
+    public_key_string=public_table_key()
+    public_key_bytes = public_key_string.encode('utf-8')
+    loaded_public_key = serialization.load_pem_public_key(public_key_bytes)
+
+    encrypted_password = loaded_public_key.encrypt(
+    decrypted_password,
+    padding.OAEP(
+        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+        algorithm=hashes.SHA256(),
+        label=None
+        )
+    )
 
     sql = f"""UPDATE datos_cifrados
     SET sitio = ?, username = ?,
