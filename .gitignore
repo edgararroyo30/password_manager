@@ -4,3 +4,4 @@ image
 .env
 __pycache__
 keys.json
+.json
