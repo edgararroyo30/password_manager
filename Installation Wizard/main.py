@@ -1,10 +1,12 @@
 import tkinter as tk
 import customtkinter as ctk
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 from ttkthemes import ThemedStyle
 import shutil
 import os
 import winreg
+import json
+from pathlib import Path
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization, hashes
@@ -73,7 +75,7 @@ class ConexionCodigo:
         self.conexion.commit()
         self.conexion.close()
 
-def get_passwords(path):
+def get_password(path):
     connect = ConexionDB(path)
 
     sql = "SELECT password FROM datos_cifrados"
@@ -95,7 +97,16 @@ def get_id(path):
     id_user = connect.cursor.fetchall()
     connect.cerrar()
 
-    return id_user
+    id_list = []
+
+    for id in id_user:
+        id = str(id)
+        id =id.strip("()")
+        id =id.strip(",")
+
+        id_list.append(id)
+
+    return id_list
 
 def get_code(path):
     connect = ConexionCodigo(path)
@@ -115,37 +126,59 @@ def decode_passwords(path):
     uncrypted = []
 
     for password in passwords:
+        password = str(password)
+        password = password.strip("()")
+        password = password.strip(",")
+        password = password.strip("b")
+        password = password.strip("'")
+        password = password.encode()
 
         decrypyed_password = f.decrypt(password)
 
-        uncrypted.append(decrypyted_password)
+        uncrypted.append(decrypyed_password.decode())
 
     return uncrypted
 
-def encode_passwords(password, path):
-    # Obtener el valor de la variable de entorno
-    public_db_key = os.environ.get("Public_db_key")
-
-    p = Fernet(public_db_key)
-
+def encode_passwords(path):
+    
     passwords = decode_passwords(path)
 
-    encryted = []
+    encrypted = []
 
     for password in passwords:
-        encrypted_password = p.encrypt(password)
+        encrypted_password = public_key1.encrypt(
+        password.encode("utf-8"),
+        padding.OAEP(
+        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+        algorithm=hashes.SHA256(),
+        label=None
+        )
+    )
+        
 
-        encryted.append(encrypted_password)
+        encrypted.append(encrypted_password)
 
-    return encryted
+    return encrypted
 
-def delete_old_passwords(path, id_user):
+def update_passwords(path, id_user, password):
     connect = ConexionDB(path)
 
-    sql = "UPDATE FROM datos_cifrados(password) WHERE id_user = ?"
+    sql = "UPDATE datos_cifrados SET password = ? WHERE id_user = ?"
 
-    connect.cursor.execute(sql, id_user)
+    connect.cursor.execute(sql, (password, id_user,))
     connect.cerrar()
+
+def store_passwords(path):
+    passwords = encode_passwords(path)
+    id_p = get_id(path)
+    
+    password_id = list(zip(id_p, passwords))
+
+    for value in password_id:
+        id, password = value
+
+        update_passwords(path, id, password)
+
 
 class InstalacionApp:
     def __init__(self, ventana):
@@ -168,14 +201,27 @@ class InstalacionApp:
 
     def seleccionar_ubicacion(self):
         self.ubicacion_seleccionada = filedialog.askdirectory()
-        self.ubicacion_entry.delete(0, 100)
-        self.ubicacion_entry.insert(0, self.ubicacion_seleccionada)
-        self.ubicacion_database = self.ubicacion_seleccionada + '/Administrador de contraseñas/database'
+        if self.ubicacion_seleccionada == "":
+            self.ubicacion_seleccionada = 'C:/Program Files'
+            self.ubicacion_entry.delete(0, 100)
+            self.ubicacion_entry.insert(0, self.ubicacion_seleccionada)
+            self.ubicacion_database = self.ubicacion_seleccionada + '/Administrador de contraseñas/database'
+
+        else:
+            self.ubicacion_entry.delete(0, 100)
+            self.ubicacion_entry.insert(0, self.ubicacion_seleccionada)
+            self.ubicacion_database = self.ubicacion_seleccionada + '/Administrador de contraseñas/database'
 
     def seleccionar_ubicacion_db(self):
         self.ubicacion_database = filedialog.askdirectory()
-        self.actualizar_entry.delete(0, 100)
-        self.actualizar_entry.insert(0, self.ubicacion_database)
+        if self.ubicacion_database == "":
+            self.ubicacion_database = self.ubicacion_seleccionada + '/Administrador de contraseñas/database'
+            self.actualizar_entry.delete(0, 100)
+            self.actualizar_entry.insert(0, self.ubicacion_database)
+
+        else:
+            self.actualizar_entry.delete(0, 100)
+            self.actualizar_entry.insert(0, self.ubicacion_database)
 
     def instalar(self):
         if self.ubicacion_seleccionada:
@@ -196,6 +242,8 @@ class InstalacionApp:
             self.copiar_archivos()
             self.variable_entorno()
             self.crear_archivos()
+            self.write_version()
+            store_passwords(self.ubicacion_database + '/datos_usuarios.db')
 
             self.exito()
         else:
@@ -218,9 +266,12 @@ class InstalacionApp:
         ruta_respaldo = os.path.join(ruta_principal, "backup")
         os.makedirs(ruta_respaldo, exist_ok=True)
 
-    def copiar_archivos(self):
-        try:
+        ruta_version = os.path.join(ruta_principal, "version")
+        os.makedirs(ruta_version, exist_ok=True)
 
+    def copiar_archivos(self):
+        ubicacion = Path(self.ubicacion_seleccionada + '/Administrador de contraseñas/database/codigo_acceso.db')
+        try:
             if self.ubicacion_database != self.ubicacion_seleccionada + '/Administrador de contraseñas/database':
                 
                 archivo_basedatos = self.ubicacion_database
@@ -229,22 +280,53 @@ class InstalacionApp:
                 for file in os.listdir(self.ubicacion_database):
                     shutil.copy2(os.path.join(self.ubicacion_database, file), ubicacion_db)
 
+            if ubicacion.exists():
+                print("Los archivos ya existen")
+
             else:
                 db_codigo = open(self.ubicacion_seleccionada + '/Administrador de contraseñas/database/codigo_acceso.db', 'w')
                 db_codigo.close()
 
                 db_usuarios = open(self.ubicacion_seleccionada + '/Administrador de contraseñas/database/datos_usuarios.db', 'w')
                 db_usuarios.close()
+                
         except SameFileError:
             print("Los archivos ya existen")
 
     def crear_archivos(self):
-        respaldo_claves = open(self.ubicacion_seleccionada + '/Administrador de contraseñas/backup/keys.json', 'w')
-        respaldo_claves.write(f"PUBLIC_DB_KEY'{public_key_pem.decode()}'\n")
-        respaldo_claves.write(f"PRIVATE_DB_KEY'{private_key_pem.decode()}'\n")
-        respaldo_claves.write(f"PRIVATE_DB_KEY'{public_key1_pem.decode()}'\n")
-        respaldo_claves.write(f"PUBLIC_TABLE_KEY'{private_key1_pem.decode()}'\n")
-        respaldo_claves.close()
+        claves = {
+        "PUBLIC_DB_KEY": public_key_pem.decode().replace('\n', ''),
+        "PRIVATE_DB_KEY": private_key_pem.decode().replace('\n', ''),
+        "PUBLIC_TABLE_KEY": public_key1_pem.decode().replace('\n', ''),
+        "PRIVATE_TABLE_KEY": private_key1_pem.decode().replace('\n', '')
+        }
+
+        for key, value in claves.items():
+            if value.startswith("-----BEGIN PUBLIC KEY-----") and "\n" not in value:
+                claves[key] = value.replace("-----BEGIN PUBLIC KEY-----", "-----BEGIN PUBLIC KEY-----\n")
+
+        for key, value in claves.items():
+            if value.startswith("-----BEGIN PRIVATE KEY-----") and "\n" not in value:
+                claves[key] = value.replace("-----BEGIN PRIVATE KEY-----", "-----BEGIN PRIVATE KEY-----\n")
+
+        for key, value in claves.items():
+            if value.endswith("-----END PUBLIC KEY-----"):
+                claves[key] = value.replace("-----END PUBLIC KEY-----", "\n-----END PUBLIC KEY-----")
+
+        for key, value in claves.items():
+            if value.endswith("-----END PRIVATE KEY-----"):
+                claves[key] = value.replace("-----END PRIVATE KEY-----", "\n-----END PRIVATE KEY-----")
+
+        data = json.dumps(claves, separators=(',', ':'), indent=4)
+        Path(self.ubicacion_seleccionada + '/Administrador de contraseñas/backup/keys.json').write_text(data)
+
+    def write_version(self):
+        version = self.ubicacion_seleccionada + '/Administrador de contraseñas/version/version.txt'
+        archivo = Path(version)
+
+        with open(version, "w") as file:
+            texto= "Version 1.2.0"
+            file.write(texto)
 
     def introduccion(self):
         self.introduccion_frame = ctk.CTkFrame(
@@ -315,9 +397,13 @@ class InstalacionApp:
 
             if self.count >= 2:
                 self.count1 = 1
-            
-        if self.count1 >= 2:
-            self.encriptacion_frame.destroy()
+        if self.check_version() is False:
+            if self.count1 >= 2:
+                self.encriptacion_frame.destroy()
+        else:
+            if self.count1 >= 2:
+                self.instalar_frame.destroy()
+
 
         self.actualizar_frame = ctk.CTkFrame(
             self.ventana, width=600, height=600, fg_color="#242424")
@@ -358,106 +444,171 @@ class InstalacionApp:
     def radiobutton_event(self):
         print("radiobutton toggled, current value:", self.radio_var.get())
 
+    def check_version(self):
+        version = self.ubicacion_seleccionada + '/Administrador de contraseñas/version/version.txt'
+        archivo =Path(version)
+
+        if archivo.exists():
+            with open(version, "r") as file:
+                version = file.readlines()
+                return version
+
+        return False
+
     def encriptacion(self):
-        self.actualizar_frame.destroy()
-        self.count1 = self.count1 + 1
-        
+        if self.check_version() is False:
 
-        if self.count2 >= 2:
-            self.count2 = self.count2
+            self.actualizar_frame.destroy()
+            self.count1 = self.count1 + 1
+            
 
+            if self.count2 >= 2:
+                self.count2 = self.count2
+
+            else:
+
+                if self.count1 >= 2:
+                    self.count2 = 1
+
+            if self.count2 >= 2:
+                self.instalar_frame.destroy()
+
+
+            self.encriptacion_frame = ctk.CTkFrame(
+                self.ventana, width=600, height=600, fg_color="#242424")
+            self.encriptacion_frame.grid()
+
+            self.radio_var = tk.IntVar(value=0)
+
+            self.encriptacion_label = ctk.CTkTextbox(
+                self.encriptacion_frame, fg_color="#242424", width=600, activate_scrollbars=False)
+            self.encriptacion_label.grid(
+                row=0, column=0, padx=(10, 0), pady=(0, 60))
+
+            self.encriptacion_label.insert(
+                index="0.0", text="La nueva version del administrador de contraseñas ofrece un nuevo y mas seguro metodo de cifrado,\nlo que mantiene tus contraseñas mas seguras.\nEs recomendable actualizar a este nuevo metodo de cifrado, pero si lo deseas puedes seguir usando \nel metodo antigüo.")
+            self.encriptacion_label.configure(state="disabled")
+
+            self.new_encryption = ctk.CTkRadioButton(self.encriptacion_frame,command=self.radiobutton_event ,border_width_unchecked=2 ,radiobutton_width=8,variable= self.radio_var,value=1 ,radiobutton_height=8 ,  width=100, height=4,text="Nuevo metodo de cifrado (recomendado)")
+            self.new_encryption.grid(row=0, column=0, padx=(0, 250), pady=(0, 0))
+
+            self.new_encryption_desc = ctk.CTkTextbox(self.encriptacion_frame, fg_color="#242424", width=400, height=50 ,activate_scrollbars=False)
+            self.new_encryption_desc.grid(row=0, column=0, padx=(0, 100), pady=(80, 0))
+
+            self.new_encryption_desc.insert(index="0.0", text="El nuevo metodo usa cifrado asimetrico para incrementar la\nseguridad a la hora de guardar y acceder a tus contraseñas.")
+            self.new_encryption_desc.configure(state="disabled")
+
+
+            self.old_encryption = ctk.CTkRadioButton(self.encriptacion_frame,command=self.radiobutton_event ,border_width_unchecked=2 ,radiobutton_width=8,variable= self.radio_var,value=2 ,radiobutton_height=8 ,  width=100, height=4,text="Antigüo metodo de cifrado")
+            self.old_encryption.grid(row=0, column=0, padx=(0, 330), pady=(150, 0))
+
+            self.old_encryption_desc = ctk.CTkTextbox(self.encriptacion_frame, fg_color="#242424", width=400, height=50 ,activate_scrollbars=False)
+            self.old_encryption_desc.grid(row=0, column=0, padx=(0, 100), pady=(230, 0))
+
+            self.old_encryption_desc.insert(index="0.0", text="El viejo metodo usa cifrado simetrico lo que limita la \nseguridad a la hora de guardar y acceder a tus contraseñas.")
+            self.old_encryption_desc.configure(state="disabled")
+
+
+            self.continuar_encriptacion_button = ctk.CTkButton(
+                self.encriptacion_frame, text="Continuar", fg_color="#242424", hover_color="#2b2b2b", command=self.instalacion, width=100)
+            self.continuar_encriptacion_button.grid(
+                row=1, column=0, padx=(420, 0), pady=(80, 0))
+
+            self.regresar_encriptacion_button = ctk.CTkButton(
+                self.encriptacion_frame, text="Regresar", fg_color="#242424", hover_color="#2b2b2b", command=self.actualizar, width=100)
+            self.regresar_encriptacion_button.grid(
+                row=1, column=0, padx=(0, 450), pady=(80, 0))
         else:
-
-            if self.count1 >= 2:
-                self.count2 = 1
-
-        if self.count2 >= 2:
-            self.instalar_frame.destroy()
-
-
-        self.encriptacion_frame = ctk.CTkFrame(
-            self.ventana, width=600, height=600, fg_color="#242424")
-        self.encriptacion_frame.grid()
-
-        self.radio_var = tk.IntVar(value=0)
-
-        self.encriptacion_label = ctk.CTkTextbox(
-            self.encriptacion_frame, fg_color="#242424", width=600, activate_scrollbars=False)
-        self.encriptacion_label.grid(
-            row=0, column=0, padx=(10, 0), pady=(0, 60))
-
-        self.encriptacion_label.insert(
-            index="0.0", text="La nueva version del administrador de contraseñas ofrece un nuevo y mas seguro metodo de cifrado,\nlo que mantiene tus contraseñas mas seguras.\nEs recomendable actualizar a este nuevo metodo de cifrado, pero si lo deseas puedes seguir usando \nel metodo antigüo.")
-        self.encriptacion_label.configure(state="disabled")
-
-        self.new_encryption = ctk.CTkRadioButton(self.encriptacion_frame,command=self.radiobutton_event ,border_width_unchecked=2 ,radiobutton_width=8,variable= self.radio_var,value=1 ,radiobutton_height=8 ,  width=100, height=4,text="Nuevo metodo de cifrado (recomendado)")
-        self.new_encryption.grid(row=0, column=0, padx=(0, 250), pady=(0, 0))
-
-        self.new_encryption_desc = ctk.CTkTextbox(self.encriptacion_frame, fg_color="#242424", width=400, height=50 ,activate_scrollbars=False)
-        self.new_encryption_desc.grid(row=0, column=0, padx=(0, 100), pady=(80, 0))
-
-        self.new_encryption_desc.insert(index="0.0", text="El nuevo metodo usa cifrado asimetrico para incrementar la\nseguridad a la hora de guardar y acceder a tus contraseñas.")
-        self.new_encryption_desc.configure(state="disabled")
-
-
-        self.old_encryption = ctk.CTkRadioButton(self.encriptacion_frame,command=self.radiobutton_event ,border_width_unchecked=2 ,radiobutton_width=8,variable= self.radio_var,value=2 ,radiobutton_height=8 ,  width=100, height=4,text="Antigüo metodo de cifrado")
-        self.old_encryption.grid(row=0, column=0, padx=(0, 330), pady=(150, 0))
-
-        self.old_encryption_desc = ctk.CTkTextbox(self.encriptacion_frame, fg_color="#242424", width=400, height=50 ,activate_scrollbars=False)
-        self.old_encryption_desc.grid(row=0, column=0, padx=(0, 100), pady=(230, 0))
-
-        self.old_encryption_desc.insert(index="0.0", text="El viejo metodo usa cifrado simetrico lo que limita la \nseguridad a la hora de guardar y acceder a tus contraseñas.")
-        self.old_encryption_desc.configure(state="disabled")
-
-
-
-
-        self.continuar_encriptacion_button = ctk.CTkButton(
-            self.encriptacion_frame, text="Continuar", fg_color="#242424", hover_color="#2b2b2b", command=self.instalacion, width=100)
-        self.continuar_encriptacion_button.grid(
-            row=1, column=0, padx=(420, 0), pady=(80, 0))
-
-        self.regresar_encriptacion_button = ctk.CTkButton(
-            self.encriptacion_frame, text="Regresar", fg_color="#242424", hover_color="#2b2b2b", command=self.actualizar, width=100)
-        self.regresar_encriptacion_button.grid(
-            row=1, column=0, padx=(0, 450), pady=(80, 0))
+            self.instalacion()
 
     def instalacion(self):
-        self.encriptacion_frame.destroy()
+        try:
+            if self.radio_var.get() == 0:
+                messagebox.showinfo("Seleccion necesaria", "Selecciona una opcion para la encriptacion de tus contraseñas.")
 
-        self.count2 = self.count2 + 1
+            else:
+
+                self.encriptacion_frame.destroy()
+
+                self.count2 = self.count2 + 1
 
 
-        self.instalar_frame = ctk.CTkFrame(
-            self.ventana, width=600, height=600, fg_color="#242424")
-        self.instalar_frame.grid()
+                self.instalar_frame = ctk.CTkFrame(
+                    self.ventana, width=600, height=600, fg_color="#242424")
+                self.instalar_frame.grid()
 
-        self.instalar_label = ctk.CTkTextbox(
-            self.instalar_frame, fg_color="#242424", width=600, activate_scrollbars=False)
-        self.instalar_label.grid(
-            row=0, column=0, padx=(10, 0), pady=(10, 0))
+                self.instalar_label = ctk.CTkTextbox(
+                    self.instalar_frame, fg_color="#242424", width=600, activate_scrollbars=False)
+                self.instalar_label.grid(
+                    row=0, column=0, padx=(10, 0), pady=(10, 0))
 
-        self.instalar_label.insert(
-            index="0.0", text="Presiona instalar para comenzar con la instalacion.")
-        self.instalar_label.configure(state="disabled")
+                self.instalar_label.insert(
+                    index="0.0", text="Presiona instalar para comenzar con la instalacion.")
+                self.instalar_label.configure(state="disabled")
 
-        self.instalar_progreso = ctk.CTkProgressBar(
-            self.instalar_frame,  fg_color="#242424", border_color="#2b2b2b", progress_color="Green", border_width=1, width=500)
+                self.instalar_progreso = ctk.CTkProgressBar(
+                    self.instalar_frame,  fg_color="#242424", border_color="#2b2b2b", progress_color="Green", border_width=1, width=500)
 
-        self.progreso_label = ctk.CTkTextbox(
-            self.instalar_frame, fg_color="#242424", width=100, height=5, activate_scrollbars=False)
-        self.progreso_label.grid(
-            row=0, column=0, padx=(0, 430), pady=(0, 40))
+                self.progreso_label = ctk.CTkTextbox(
+                    self.instalar_frame, fg_color="#242424", width=100, height=5, activate_scrollbars=False)
+                self.progreso_label.grid(
+                    row=0, column=0, padx=(0, 430), pady=(0, 40))
 
-        # Botón de instalación
-        self.boton_instalar = ctk.CTkButton(
-            self.instalar_frame, text="Instalar", fg_color="#242424", hover_color="#2b2b2b", width=100, command=self.instalar)
-        self.boton_instalar.grid(row=1, column=0, padx=(420, 0), pady=(150, 0))
+                self.boton_instalar = ctk.CTkButton(
+                    self.instalar_frame, text="Instalar", fg_color="#242424", hover_color="#2b2b2b", width=100, command=self.instalar)
+                self.boton_instalar.grid(row=1, column=0, padx=(420, 0), pady=(150, 0))
 
-        self.regresar_1_button = ctk.CTkButton(
-            self.instalar_frame, text="Regresar", fg_color="#242424", hover_color="#2b2b2b", width=100, command= self.encriptacion)
-        self.regresar_1_button.grid(
-            row=1, column=0, padx=(0, 450), pady=(150, 0))
+                self.regresar_1_button = ctk.CTkButton(
+                    self.instalar_frame, text="Regresar", fg_color="#242424", hover_color="#2b2b2b", width=100, command= self.encriptacion)
+                self.regresar_1_button.grid(
+                    row=1, column=0, padx=(0, 450), pady=(150, 0))
+
+        except AttributeError:
+            print("Accediendo con version ")
+
+            self.actualizar_frame.destroy()
+            self.count1 = self.count1 + 1
+            
+
+            if self.count2 >= 2:
+                self.count2 = self.count2
+
+            else:
+
+                if self.count1 >= 2:
+                    self.count2 = 1
+
+            
+
+            self.instalar_frame = ctk.CTkFrame(
+                    self.ventana, width=600, height=600, fg_color="#242424")
+            self.instalar_frame.grid()
+
+            self.instalar_label = ctk.CTkTextbox(
+                    self.instalar_frame, fg_color="#242424", width=600, activate_scrollbars=False)
+            self.instalar_label.grid(
+                    row=0, column=0, padx=(10, 0), pady=(10, 0))
+
+            self.instalar_label.insert(
+                    index="0.0", text="Presiona instalar para comenzar con la instalacion.")
+            self.instalar_label.configure(state="disabled")
+
+            self.instalar_progreso = ctk.CTkProgressBar(
+                    self.instalar_frame,  fg_color="#242424", border_color="#2b2b2b", progress_color="Green", border_width=1, width=500)
+
+            self.progreso_label = ctk.CTkTextbox(
+                    self.instalar_frame, fg_color="#242424", width=100, height=5, activate_scrollbars=False)
+            self.progreso_label.grid(
+                    row=0, column=0, padx=(0, 430), pady=(0, 40))
+
+            self.boton_instalar = ctk.CTkButton(
+                    self.instalar_frame, text="Instalar", fg_color="#242424", hover_color="#2b2b2b", width=100, command=self.instalar)
+            self.boton_instalar.grid(row=1, column=0, padx=(420, 0), pady=(150, 0))
+
+            self.regresar_1_button = ctk.CTkButton(
+                    self.instalar_frame, text="Regresar", fg_color="#242424", hover_color="#2b2b2b", width=100, command= self.actualizar)
+            self.regresar_1_button.grid(
+                    row=1, column=0, padx=(0, 450), pady=(150, 0))
 
     def exito(self):
         self.instalar_frame.destroy()
