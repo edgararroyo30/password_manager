@@ -1,6 +1,5 @@
 import tkinter as tk
-import customtkinter as ctk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 from ttkthemes import ThemedStyle
 import shutil
 import os
@@ -13,15 +12,963 @@ from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.fernet import Fernet
 import sqlite3
+import subprocess
+import time
+import threading
+import win32com.client
+import webbrowser
 
-# Define private and public keys
+
+main_text=""" 
+import customtkinter as ctk
+from model.admin_dao import crear_tabla, create_table_codigo
+from client.gui_app import Frame
+
+
+def main():
+    root = ctk.CTk()
+    root.title('Administrador de contrasenas')
+    root.resizable(0, 0)
+
+    app = Frame(root=root)
+
+    app.mainloop()
+
+
+if __name__ == '__main__':
+    create_table_codigo()
+    crear_tabla()
+    main()"""
+
+admin_dao_text = """
+from tkinter import messagebox
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+import bcrypt
+from .conexion_db import ConexionDB, ConexionCodigo
+from model.key import public_table_key, private_db_key
+
+def crear_tabla():
+    conexion = ConexionDB()
+
+    sql = '''
+    CREATE TABLE if NOT EXISTS datos_cifrados(
+        id_user INTEGER,
+        sitio text,
+        username text,
+        password BLOB,
+        PRIMARY KEY(id_user AUTOINCREMENT)
+        )'''
+    
+    conexion.cursor.execute(sql)
+    conexion.cerrar()
+
+
+def borrar_tabla():
+    conexion = ConexionDB()
+
+    sql = 'DROP TABLE datos_cifrados'
+
+    try:
+
+        conexion.cursor.execute(sql)
+        conexion.cerrar()
+        titulo = 'Crear Registro'
+        mensaje = 'La tabla de la base de datos se borro con exito'
+        messagebox.showinfo(titulo, mensaje)
+
+    except:
+        titulo = 'Crear Registro'
+        mensaje = 'No hay tabla para borrar'
+        messagebox.showerror(titulo, mensaje)
+
+
+class user:
+    def __init__(self, sitio, username, password):
+        self.id_user = None
+        self.sitio = sitio
+        self.username = username
+        self.password = password
+
+    def __str__(self):
+        return f'user[{self.sitio}, {self.username}, {self.password}]'
+
+
+def guardar(user_d):
+    conexion = ConexionDB()
+
+    def decrypt_in(user_data):
+
+        private_key_string=private_db_key()
+        private_key_bytes = private_key_string.encode('utf-8')
+        loaded_private_key = serialization.load_pem_private_key(private_key_bytes,password=None)
+
+        get_password = user_data.password
+
+
+        decrypted_data = loaded_private_key.decrypt(
+        get_password,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+            )
+        )
+
+        return decrypted_data
+
+    decrypted_password= decrypt_in(user_d)
+
+
+    public_key_string=public_table_key()
+    public_key_bytes = public_key_string.encode('utf-8')
+    loaded_public_key = serialization.load_pem_public_key(public_key_bytes)
+
+    encrypted_password = loaded_public_key.encrypt(
+    decrypted_password,
+    padding.OAEP(
+        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+        algorithm=hashes.SHA256(),
+        label=None
+        )
+    )
+
+    get_sitio = user_d.sitio
+    get_username = user_d.username
+    sql = "INSERT INTO datos_cifrados (sitio, username, password) VALUES (?, ?, ?)"
+    try:
+        conexion.cursor.execute(
+            sql, (get_sitio, get_username, encrypted_password))
+        conexion.cerrar()
+    except Exception as e:
+        print(e)
+        titulo = 'Conexion al registro'
+        mensaje = 'La tabla no esta creado en la base de datos'
+        messagebox.showerror(titulo, mensaje)
+
+
+def listar():
+    conexion = ConexionDB()
+
+    lista_usuarios = []
+    sql = 'SELECT * FROM datos_cifrados'
+
+    try:
+        conexion.cursor.execute(sql)
+        lista_usuarios = conexion.cursor.fetchall()
+        conexion.cerrar()
+    except:
+        titulo = 'Conexion al Registro'
+        mensaje = 'Crea la tabla en la base de datos'
+        messagebox.showwarning(titulo, mensaje)
+
+    return lista_usuarios
+
+
+def editar(user_d, id_user):
+    conexion = ConexionDB()
+    def decrypt_in(user_data):
+
+        private_key_string=private_db_key()
+        private_key_bytes = private_key_string.encode('utf-8')
+        loaded_private_key = serialization.load_pem_private_key(private_key_bytes,password=None)
+
+        get_password = user_data.password
+
+
+        decrypted_data = loaded_private_key.decrypt(
+        get_password,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+            )
+        )
+
+        return decrypted_data
+
+    decrypted_password= decrypt_in(user_d)
+
+
+    public_key_string=public_table_key()
+    public_key_bytes = public_key_string.encode('utf-8')
+    loaded_public_key = serialization.load_pem_public_key(public_key_bytes)
+
+    encrypted_password = loaded_public_key.encrypt(
+    decrypted_password,
+    padding.OAEP(
+        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+        algorithm=hashes.SHA256(),
+        label=None
+        )
+    )
+
+    sql = f"UPDATE datos_cifrados SET sitio = ?, username = ?, password = ? WHERE id_user = ?"
+
+    try:
+        conexion.cursor.execute(
+            sql, (user_d.sitio, user_d.username, encrypted_password, id_user))
+        conexion.cerrar()
+
+    except:
+        titulo = 'Edicion de datos'
+        mensaje = 'No se a podido editar este registro'
+        messagebox.showerror(titulo, mensaje)
+
+
+def eliminar(id_user):
+    conexion = ConexionDB()
+
+    sql = f'DELETE FROM datos_cifrados WHERE id_user = {id_user}'
+
+    try:
+        conexion.cursor.execute(sql)
+        conexion.cerrar()
+
+    except:
+        titulo = 'Eliminar datos'
+        mensaje = 'No se pudo eliminar el registro'
+        messagebox.showerror(titulo, mensaje)
+
+
+def cuenta_id():
+    conexion = ConexionDB()
+
+    numero_contrasenas = []
+    sql = 'SELECT id_user FROM datos_cifrados'
+
+    try:
+        conexion.cursor.execute(sql)
+        numero_contrasenas = conexion.cursor.fetchall()
+        conexion.cerrar()
+    except:
+        titulo = 'Conexion al Registro'
+        mensaje = 'Crea la tabla en la base de datos'
+        messagebox.showwarning(titulo, mensaje)
+
+    return numero_contrasenas
+
+
+def create_table_codigo():
+    conexion = ConexionCodigo()
+
+    sql = "CREATE TABLE if NOT EXISTS codigo (code BLOB)"
+
+    conexion.cursor.execute(sql)
+    conexion.cerrar()
+
+
+def solicitar_clave_acceso():
+    conexion = ConexionCodigo()
+
+    sql = 'SELECT * FROM codigo'
+
+    conexion.cursor.execute(sql)
+    codigo = conexion.cursor.fetchone()
+    conexion.cerrar()
+
+    if codigo is None:
+        return False
+
+    return True
+
+
+def save_code(code):
+    conexion = ConexionCodigo()
+
+    codgio_bytes = code.encode()
+    codigo_hashed = bcrypt.hashpw(codgio_bytes, bcrypt.gensalt())
+
+    sql = "INSERT INTO codigo VALUES (?)"
+
+    conexion.cursor.execute(sql, (codigo_hashed,))
+    conexion.cerrar()
+
+
+def check_code(code):
+    conexion = ConexionCodigo()
+
+    sql = 'SELECT code FROM codigo'
+
+    conexion.cursor.execute(sql)
+    codigo = conexion.cursor.fetchone()
+    conexion.cerrar()
+
+    if codigo is not None:
+        hashed_password = codigo[0]
+        codigo_bytes = code.encode()
+        return bcrypt.checkpw(codigo_bytes, hashed_password)
+    return False
+
+"""
+
+conexion_db_text = """
+import sqlite3
+
+
+class ConexionDB:
+    def __init__(self):
+        self.base_datos = 'database/datos_usuarios.db'
+        self.conexion = sqlite3.connect(self.base_datos)
+        self.cursor = self.conexion.cursor()
+
+    def cerrar(self):
+        self.conexion.commit()
+        self.conexion.close()
+
+
+class ConexionCodigo:
+    def __init__(self):
+        self.base_datos = 'database/codigo_acceso.db'
+        self.conexion = sqlite3.connect(self.base_datos)
+        self.cursor = self.conexion.cursor()
+
+    def cerrar(self):
+        self.conexion.commit()
+        self.conexion.close()"""
+
+key_text = """
+import json
+
+def public_table_key():
+    with open("keys.json", "r") as file:
+        config = json.load(file)
+    key = config["PUBLIC_TABLE_KEY"]
+    
+    return key
+
+
+def private_db_key():
+    with open("keys.json", "r") as file:
+        config = json.load(file)
+    key = config["PRIVATE_DB_KEY"]
+    
+    return key
+
+def public_db_key():
+    with open("keys.json", "r") as file:
+        config = json.load(file)
+    key = config["PUBLIC_DB_KEY"]
+    
+    return key
+    
+def private_table_key():
+    with open("keys.json", "r") as file:
+        config = json.load(file)
+    key = config["PRIVATE_TABLE_KEY"]
+    
+    return key
+"""
+
+gui_app_text = """
+import tkinter as tk
+import customtkinter as ctk
+from tkinter import ttk, messagebox
+
+import secrets
+
+import pyperclip
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+from ttkthemes import ThemedStyle
+from model.admin_dao import user, guardar, listar, eliminar, editar
+from model.admin_dao import cuenta_id, solicitar_clave_acceso, save_code, check_code
+from model.key import public_db_key, private_table_key
+
+def generate_password():
+    password_lenght = 12
+    password = secrets.token_urlsafe(password_lenght)
+    return password
+
+
+def contar_id():
+
+    get_id = cuenta_id()
+    numero_id = len(get_id)
+    return numero_id
+
+
+class Frame(ttk.Frame):
+    def __init__(self, root=None, data=None):
+        super().__init__(root)
+        self.root = root
+        self.data = data
+        self.pack()
+
+        self.style = ThemedStyle(self.root)
+        self.style.set_theme("equilux")
+        self.style.theme_use('equilux')
+
+        self.crear_widgets()
+        self.cuenta_contrasenas()
+        self.tabla_de_contrasenas()
+        self.pop_menu()
+        if solicitar_clave_acceso() is False:
+            self.create_code()
+        elif solicitar_clave_acceso() is True:
+            self.input_code()
+
+    def eliminar_datos(self):
+        self.id_user = self.tabla.item(self.tabla.selection())['text']
+        eliminar(self.id_user)
+        self.tabla_de_contrasenas()
+        self.pop_menu()
+        self.cuenta_contrasenas()
+
+    def mostrar_menu(self, event):
+        self.popup_menu.post(event.x_root, event.y_root)
+
+    def cuenta_contrasenas(self):
+        mi_cuenta_usuarios = (f"{contar_id()} contraseñas guardadas")
+
+        self.label_usuarios = ttk.Label(self, text=mi_cuenta_usuarios)
+        self.style.configure(style='Equilux.TLabel')
+        self.label_usuarios.config(
+            width=30, font=('Segoe UI', 10, 'bold'))
+        self.label_usuarios.grid(row=3, padx=(10, 180), pady=(12, 2))
+
+    def crear_widgets(self):
+        self.boton_nuevo = ttk.Button(
+            self, text='Agregar Usuario', command=self.new_user, width=15)
+
+        self.boton_nuevo.grid(row=3, column=2,
+                              padx=(2, 10), pady=(10, 2))
+
+        self.mi_busqueda = tk.StringVar()
+        self.entry_buscar = ttk.Entry(self, textvariable=self.mi_busqueda)
+        self.style.configure(style='Equilux.TEntry')
+        self.entry_buscar.config(width=25, font=('Segoe UI', 9))
+        self.entry_buscar.grid(
+            row=3, padx=(250, 0), pady=(10, 2), columnspan=1)
+
+        def buscar():
+            self.search_and_highlight(self.tabla, self.mi_busqueda.get())
+
+        self.boton_buscar = ttk.Button(self, text='Buscar', command=buscar)
+
+        self.style.configure("TButton", width=10, font=('Segoe UI', 8),
+                             cursor='hand2', focuscolor='none', borderwidth=2,
+                             bd=2, relief="solid", anchor='center',
+                             highlightcolor='#35BD6F', highlightbackground='#35BD6F')
+
+        self.boton_buscar.grid(row=3, column=1,
+                               padx=(2, 0), pady=(10, 2))
+
+    def new_user(self):
+        ventana = tk.Toplevel(self)
+        ventana.config(background=self.style.lookup('TFrame', 'background'))
+        ventana.title('Agregar Usuario')
+        ventana.iconbitmap('image/icono_candado.ico')
+        style = ThemedStyle(ventana)
+
+        ventana.geometry("310x250")
+
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (ventana.winfo_width() // 2)
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (ventana.winfo_height() // 2)
+
+        # Se actualiza la posición de la ventana secundaria
+        ventana.geometry("+{}+{}".format(x, y))
+
+        ventana.lift()
+
+        ventana.overrideredirect(False)
+
+        def destroy():
+            ventana.destroy()
+
+        label_sitio_web = ttk.Label(ventana, text='URL del sitio web')
+        style.configure(style='Equilux.TLabel')
+        label_sitio_web.config(
+            width=17, font=('Segoe UI', 10))
+        label_sitio_web.grid(row=0, padx=(1, 10), pady=(14, 4))
+
+        label_nombre_usuario = ttk.Label(
+            ventana, text='Nombre de usuario ')
+        style.configure(style='Equilux.TLabel')
+        label_nombre_usuario.config(
+            width=17, font=('Segoe UI', 10))
+        label_nombre_usuario.grid(row=2, padx=(1, 10), pady=(14, 4))
+
+        label_contraseña = ttk.Label(ventana, text='Contraseña ')
+        style.configure(style='Equilux.TLabel')
+        label_contraseña.config(
+            width=17, font=('Segoe UI', 10))
+        label_contraseña.grid(row=4, padx=(1, 10), pady=(14, 4))
+
+        # Entrys de cada campo
+        self.mi_sitio_web_add = tk.StringVar()
+
+        entry_sitio_web = ttk.Entry(
+            ventana, textvariable=self.mi_sitio_web_add)
+        style.configure(style='Equilux.TEntry')
+        entry_sitio_web.config(width=30, font=('Segoe UI', 12))
+        entry_sitio_web.grid(
+            row=1, padx=(15, 16), columnspan=3)
+
+        self.mi_nombre_usuario_add = tk.StringVar()
+
+        entry_nombre_usuario = ttk.Entry(
+            ventana, textvariable=self.mi_nombre_usuario_add)
+        style.configure(style='Equilux.TEntry')
+        entry_nombre_usuario.config(width=30,
+                                    font=('Segoe UI', 12))
+        entry_nombre_usuario.grid(
+            row=3, padx=(16, 16), columnspan=3)
+
+        mi_contrasena = generate_password()
+        self.mi_contrasena_add = tk.StringVar()
+
+        entry_contrasena = ttk.Entry(
+            ventana, textvariable=self.mi_contrasena_add)
+        entry_contrasena.insert(0, mi_contrasena)
+        style.configure(
+            style='Equilux.TEntry')
+
+        entry_contrasena.config(width=30,
+                                font=('Segoe UI', 12))
+        entry_contrasena.grid(
+            row=5, padx=(16, 16), columnspan=3)
+
+        def guardar_datos():
+            public_key_string=public_db_key()
+            public_key_bytes = public_key_string.encode('utf-8')
+            loaded_public_key = serialization.load_pem_public_key(public_key_bytes)
+
+            encrypted_password = loaded_public_key.encrypt(
+            self.mi_contrasena_add.get().encode('utf-8'),
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+                )
+            )
+
+            user_data = user(
+                self.mi_sitio_web_add.get(),
+                self.mi_nombre_usuario_add.get(),
+                encrypted_password)
+            guardar(user_data)
+            ventana.destroy()
+            self.tabla_de_contrasenas()
+            self.pop_menu()
+            self.cuenta_contrasenas()
+
+        boton_guardar = ttk.Button(
+            ventana, text='Guardar', command=guardar_datos)
+
+        style.configure("RoundedButton.TButton", width=25, font=('Segoe UI', 12, 'bold'),
+                        cursor='hand2', focuscolor='none', borderwidth=2,
+                        bd=2, relief="solid", anchor='center',
+                        highlightcolor='#35BD6F', highlightbackground='#35BD6F')
+
+        boton_guardar.grid(
+            row=6, column=0,  padx=(30, 10), pady=(14, 10))
+
+        boton_cancelar = ttk.Button(
+            ventana, text='Cancelar', command=destroy)
+
+        style.configure("RoundedButton.TButton", width=25, font=('Segoe UI', 12, 'bold'),
+                        cursor='hand2', focuscolor='none', borderwidth=2,
+                        bd=2, relief="solid", anchor='center',
+                        highlightcolor='#35BD6F', highlightbackground='#35BD6F')
+
+        boton_cancelar.grid(
+            row=6, column=1,  padx=(0, 20), pady=(14, 10))
+
+    def edit_user(self):
+        self.ventana = tk.Toplevel(self)
+        self.ventana.config(
+            background=self.style.lookup('TFrame', 'background'))
+        self.ventana.title('Editar Usuario')
+        self.ventana.iconbitmap('image/icono_candado.ico')
+        self.style = ThemedStyle(self.ventana)
+
+        self.ventana.geometry("310x250")
+
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (self.ventana.winfo_width() // 2)
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (self.ventana.winfo_height() // 2)
+
+        # Se actualiza la posición de la ventana secundaria
+        self.ventana.geometry("+{}+{}".format(x, y))
+
+        self.ventana.lift()
+
+        self.ventana.overrideredirect(False)
+
+        def destroy():
+            self.ventana.destroy()
+
+        self.label_sitio_web = ttk.Label(
+            self.ventana, text='URL del sitio web')
+        self.style.configure(style='Equilux.TLabel')
+        self.label_sitio_web.config(
+            width=17, font=('Segoe UI', 10))
+        self.label_sitio_web.grid(row=0, padx=(1, 10), pady=(14, 4))
+
+        self.label_nombre_usuario = ttk.Label(
+            self.ventana, text='Nombre de usuario ')
+        self.style.configure(style='Equilux.TLabel')
+        self.label_nombre_usuario.config(
+            width=17, font=('Segoe UI', 10))
+        self.label_nombre_usuario.grid(row=2, padx=(1, 10), pady=(14, 4))
+
+        self.label_contraseña = ttk.Label(self.ventana, text='Contraseña ')
+        self.style.configure(style='Equilux.TLabel')
+        self.label_contraseña.config(
+            width=17, font=('Segoe UI', 10))
+        self.label_contraseña.grid(row=4, padx=(1, 10), pady=(14, 4))
+
+        # Entrys de cada campo
+        self.mi_sitio_web_edit = tk.StringVar()
+
+        self.entry_sitio_web = ttk.Entry(
+            self.ventana, textvariable=self.mi_sitio_web_edit)
+        self.style.configure(style='Equilux.TEntry')
+        self.entry_sitio_web.config(width=30, font=('Segoe UI', 12))
+        self.entry_sitio_web.grid(
+            row=1, padx=(15, 16), columnspan=3)
+
+        self.mi_nombre_usuario_edit = tk.StringVar()
+
+        self.entry_nombre_usuario = ttk.Entry(
+            self.ventana, textvariable=self.mi_nombre_usuario_edit)
+        self.style.configure(style='Equilux.TEntry')
+        self.entry_nombre_usuario.config(width=30,
+                                         font=('Segoe UI', 12))
+        self.entry_nombre_usuario.grid(
+            row=3, padx=(16, 16), columnspan=3)
+
+        self.mi_contrasena_edit = tk.StringVar()
+
+        self.entry_contrasena = ttk.Entry(
+            self.ventana, textvariable=self.mi_contrasena_edit)
+        self.style.configure(
+            style='Equilux.TEntry')
+
+        self.entry_contrasena.config(width=30,
+                                     font=('Segoe UI', 12))
+        self.entry_contrasena.grid(
+            row=5, padx=(16, 16), columnspan=3)
+
+        def guardar_datos():
+
+            public_key_string=public_db_key()
+            public_key_bytes = public_key_string.encode('utf-8')
+            loaded_public_key = serialization.load_pem_public_key(public_key_bytes)
+
+            encrypted_password = loaded_public_key.encrypt(
+            self.mi_contrasena_edit.get().encode('utf-8'),
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+                )
+            )
+
+
+            user_data = user(
+                self.mi_sitio_web_edit.get(),
+                self.mi_nombre_usuario_edit.get(),
+                encrypted_password)
+            id = self.id_user = self.tabla.item(self.tabla.selection())['text']
+            editar(user_data, id)
+
+            self.ventana.destroy()
+            self.tabla_de_contrasenas()
+            self.pop_menu()
+            self.cuenta_contrasenas()
+           
+
+        self.boton_guardar = ttk.Button(
+            self.ventana, text='Guardar', command=guardar_datos)
+
+        self.style.configure("RoundedButton.TButton", width=25, font=('Segoe UI', 12, 'bold'),
+                             cursor='hand2', focuscolor='none', borderwidth=2,
+                             bd=2, relief="solid", anchor='center',
+                             highlightcolor='#35BD6F', highlightbackground='#35BD6F')
+
+        self.boton_guardar.grid(
+            row=6, column=0,  padx=(30, 10), pady=(14, 10))
+
+        self.boton_cancelar = ttk.Button(
+            self.ventana, text='Cancelar', command=destroy)
+
+        self.style.configure("RoundedButton.TButton", width=25, font=('Segoe UI', 12, 'bold'),
+                             cursor='hand2', focuscolor='none', borderwidth=2,
+                             bd=2, relief="solid", anchor='center',
+                             highlightcolor='#35BD6F', highlightbackground='#35BD6F')
+
+        self.boton_cancelar.grid(
+            row=6, column=1,  padx=(0, 20), pady=(14, 10))
+
+    def pop_menu(self):
+        self.popup_menu = tk.Menu(
+            self, type='normal', bg='#333', foreground='#D3D3D3', tearoff=0)
+        self.popup_menu.config(activebackground='#555',
+                               activeforeground='#D3D3D3', bd=0, activeborderwidth=0)
+
+        self.popup_menu.add_command(label="Editar", command=lambda: (
+            self.edit_user(), self.editar_datos()))
+        self.popup_menu.add_command(
+            label="Eliminar", command=self.eliminar_datos)
+        self.popup_menu.add_separator()
+        self.popup_menu.add_command(
+            label="Copiar", command=self.copiar_datos)
+
+        self.tabla.bind("<Button-3>", self.mostrar_menu)
+
+    def tabla_de_contrasenas(self):
+        self.lista_usuario = listar()
+        self.lista_usuario.reverse()
+
+        self.tabla = ttk.Treeview(self,
+                                  column=('Sitio Web', 'Usuario', 'Contraseña'))
+        self.tabla.grid(row=4, column=0, columnspan=3,
+                        sticky='nse', padx=10, pady=(0, 10))
+
+        self.scroll = ttk.Scrollbar(self,
+                                    orient='vertical', command=self.tabla.yview)
+        self.scroll.grid(row=4, column=2, padx=(
+            1, 10), pady=(0, 10), sticky='nse')
+        self.tabla.configure(yscrollcommand=self.scroll.set)
+
+        self.tabla.heading('#0', text='ID')
+        self.tabla.heading('#1', text='Sitio Web')
+        self.tabla.heading('#2', text='Usuario')
+        self.tabla.heading('#3', text='Contraseña')
+
+        private_key_string=private_table_key()
+        private_key_bytes = private_key_string.encode('utf-8')
+        loaded_private_key = serialization.load_pem_private_key(private_key_bytes,password=None)
+
+
+        for p in self.lista_usuario:
+
+            decrypted_password =loaded_private_key.decrypt(
+            p[3],
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+                )
+            )
+
+            self.tabla.insert('', 0, text=p[0],
+                              values=(p[1], p[2], decrypted_password.decode('utf-8')))
+        self.tabla.column("#0", width=0, stretch=False)
+        self.tabla.config(displaycolumns=(
+            'Sitio Web', 'Usuario', 'Contraseña'))
+        self.clear_search(self.tabla)
+
+    def editar_datos(self):
+        try:
+            self.sitio = self.tabla.item(
+                self.tabla.selection())['values'][0]
+            self.username = self.tabla.item(
+                self.tabla.selection())['values'][1]
+            self.password = self.tabla.item(
+                self.tabla.selection())['values'][2]
+
+            self.entry_sitio_web.insert(0, self.sitio)
+            self.entry_nombre_usuario.insert(0, self.username)
+            self.entry_contrasena.insert(0, self.password)
+
+        except:
+            titulo = 'Edicion de datos'
+            mensaje = 'No ha seleccionado ningun registro'
+            messagebox.showerror(titulo, mensaje)
+
+    def copiar_datos(self):
+        try:
+            self.password = self.tabla.item(
+                self.tabla.selection())['values'][2]
+            pyperclip.copy(self.password)
+
+        except:
+            titulo = 'Edicion de datos'
+            mensaje = 'No ha seleccionado ningun registro'
+            messagebox.showerror(titulo, mensaje)
+
+    def input_code(self):
+        self.root.withdraw()
+        ventana = ctk.CTkToplevel(self.root)
+        ventana.config(background=self.style.lookup('TFrame', 'background'))
+        ventana.title('Acceder')
+        ventana.iconbitmap('image/icono_candado.ico')
+        style = ThemedStyle(ventana)
+        ventana.geometry("310x100")
+
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - \
+            (ventana.winfo_width() // 2)
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - \
+            (ventana.winfo_height() // 2)
+
+        # Se actualiza la posición de la ventana secundaria
+        ventana.geometry("+{}+{}".format(x, y))
+
+        ventana.lift()
+        ventana.grab_set()
+
+        ventana.overrideredirect(False)
+
+        label_sitio_web = ttk.Label(
+            ventana, text='Ingresa tu codigo de acceso')
+        style.configure(style='Equilux.TLabel')
+        label_sitio_web.config(
+            width=30, font=('Segoe UI', 10))
+        label_sitio_web.grid(row=1, padx=(70, 10), pady=(10, 4))
+
+        mi_codigo = tk.StringVar()
+
+        entry_sitio_web = ttk.Entry(
+            ventana, show="*", textvariable=mi_codigo)
+        style.configure(style='Equilux.TEntry')
+        entry_sitio_web.config(width=30, font=('Segoe UI', 12))
+        entry_sitio_web.grid(
+            row=2, padx=(15, 15), columnspan=3)
+
+        def guardar_datos():
+            codigo = str(mi_codigo.get())
+
+            if check_code(codigo) is True:
+                self.root.deiconify()
+                ventana.destroy()
+            else:
+                title = 'Acceso Denegado'
+                mensaje = 'El codgio ingresado es incorrecto'
+                messagebox.showerror(
+                    title, mensaje)
+
+        boton_guardar = ttk.Button(
+            ventana, text='Acceder', command=guardar_datos)
+
+        style.configure("RoundedButton.TButton", width=25, font=('Segoe UI', 12, 'bold'),
+                        cursor='hand2', focuscolor='none', borderwidth=2,
+                        bd=2, relief="solid", anchor='center',
+                        highlightcolor='#35BD6F', highlightbackground='#35BD6F')
+
+        boton_guardar.grid(
+            row=6, column=0,  padx=(50, 50), pady=(5, 15))
+
+    def create_code(self):
+        self.root.withdraw()
+        ventana = ctk.CTkToplevel(self.root)
+        ventana.config(background=self.style.lookup('TFrame', 'background'))
+        ventana.title('Acceder')
+        ventana.iconbitmap('image/icono_candado.ico')
+        style = ThemedStyle(ventana)
+        ventana.geometry("310x160")
+
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (ventana.winfo_width() // 2)
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (ventana.winfo_height() // 2)
+
+        # Se actualiza la posición de la ventana secundaria
+        ventana.geometry("+{}+{}".format(x, y))
+
+        ventana.lift()
+        ventana.grab_set()
+
+        ventana.overrideredirect(False)
+
+        label_sitio_web = ttk.Label(
+            ventana, text='Crea tu codigo de acceso')
+        style.configure(style='Equilux.TLabel')
+        label_sitio_web.config(
+            width=30, font=('Segoe UI', 10))
+        label_sitio_web.grid(row=1, padx=(70, 10), pady=(10, 4))
+
+        label_confirmar = ttk.Label(
+            ventana, text='Confirma tu codigo de acceso')
+        style.configure(style='Equilux.TLabel')
+        label_confirmar.config(
+            width=30, font=('Segoe UI', 10))
+        label_confirmar.grid(row=3, padx=(70, 10), pady=(10, 4))
+
+        recibir_codigo = tk.StringVar()
+
+        entry_sitio_web = ttk.Entry(
+            ventana, show="*", textvariable=recibir_codigo)
+        style.configure(style='Equilux.TEntry')
+        entry_sitio_web.config(width=30, font=('Segoe UI', 12))
+        entry_sitio_web.grid(
+            row=2, padx=(15, 15), columnspan=3)
+
+        confirmar_codigo = tk.StringVar()
+        entry_confirmar = ttk.Entry(
+            ventana, show="*", textvariable=confirmar_codigo)
+        style.configure(style='Equilux.TEntry')
+        entry_confirmar.config(width=30, font=('Segoe UI', 12))
+        entry_confirmar.grid(
+            row=4, padx=(15, 15), columnspan=3)
+
+        def guardar_datos():
+            codigo_1 = str(confirmar_codigo.get())
+            codigo_2 = str(recibir_codigo.get())
+
+            if len(codigo_1) > 0:
+                if codigo_1.lower().strip() == codigo_2.lower().strip():
+                    save_code(codigo_1)
+                    self.root.deiconify()
+                    ventana.destroy()
+                else:
+                    title = 'Creacion Codigo'
+                    mensaje = 'Los codigos no coinciden'
+                    messagebox.showerror(title, mensaje)
+            else:
+                title = 'Creacion Codigo'
+                mensaje = 'Ingresa un codigo'
+                messagebox.showerror(title, mensaje)
+
+        boton_guardar = ttk.Button(
+            ventana, text='Continuar', command=guardar_datos)
+
+        style.configure("RoundedButton.TButton", width=25, font=('Segoe UI', 12, 'bold'),
+                        cursor='hand2', focuscolor='none', borderwidth=2,
+                        bd=2, relief="solid", anchor='center',
+                        highlightcolor='#35BD6F', highlightbackground='#35BD6F')
+
+        boton_guardar.grid(
+            row=6, column=0,  padx=(50, 50), pady=(5, 15))
+
+    def clear_search(self, tree):
+        # limpiar selección y etiquetas de la tabla
+        tree.selection_remove(tree.selection())
+        tree.tag_configure("searched_row", background="#373737")
+
+    def search_and_highlight(self, tree, search_string):
+        if not search_string:
+            self.clear_search(tree)
+            return
+        # limpiar selección y etiquetas de la tabla
+        tree.selection_remove(tree.selection())
+        tree.tag_configure("searched_row", background="#373737")
+
+        for item in tree.get_children():
+            if search_string.lower() in str(tree.item(item)["values"]).lower():
+                # seleccionar y resaltar la fila
+                tree.selection_add(item)
+                tree.item(item, tags=("searched_row",))
+"""
+
+manifest_text = """
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedPrivileges>
+        <requestedExecutionLevel level="requireAdministrator" uiAccess="false"/>
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+</assembly>
+"""
+
 private_key = rsa.generate_private_key(
             public_exponent=65537,
             key_size=2048,
             backend=default_backend)
 public_key = private_key.public_key()
 
-# Define private and public keys
 private_key1 = rsa.generate_private_key(
             public_exponent=65537,
             key_size=2048,
@@ -52,6 +999,8 @@ public_key1_pem = public_key1.public_bytes(
             )
 
 key = 'PvP7oSQbrKD8HNRYvWpPTJPmqgEMZfIeO5BuS1DqDUE='
+
+bloqueo = threading.Lock()
 
 f = Fernet(key)
 
@@ -179,16 +1128,66 @@ def store_passwords(path):
 
         update_passwords(path, id, password)
 
+def ejecutar_pyinstaller(ruta_archivo,ruta_spec):
+    
+    ruta_directorio = os.path.dirname(ruta_archivo)
+    os.chdir(ruta_directorio)
+    nombre_archivo = os.path.basename(ruta_archivo)
+
+    env = 'python -m venv virtual'
+    subprocess.run(env, shell=True)
+
+    open_env = 'virtual/Scripts/activate'
+    subprocess.run(open_env, shell=True)
+
+
+    install = 'pip install pyinstaller'
+    subprocess.run(install, shell=True)
+
+    customtk = 'pip install  customtkinter'
+    subprocess.run(customtk,shell=True)
+
+    locationctk =  subprocess.run('pip show customtkinter', capture_output=True, text=True)
+
+    salida = locationctk.stdout
+
+    lineas = salida.splitlines()
+
+    location_linea = None
+    for linea in lineas:
+        if linea.startswith("Location"):
+            location_linea = linea
+            break
+
+    if location_linea:
+        location_linea = location_linea.replace("Location: ", "")
+
+    ctk_path = location_linea.strip()
+
+    run = f"""pyinstaller --noconfirm --onedir --windowed --add-data "{ctk_path}/customtkinter;customtkinter/"  {nombre_archivo}""" 
+    subprocess.run(run, shell=True)
+
+def python_exists():
+    check =  subprocess.run('python --version', capture_output=True, text=True)
+
+    salida = check.stdout
+
+    if salida.startswith("Python"):
+        return True 
+
+    return False
+
+def instalar_python():
+    webbrowser.open("https://www.python.org/downloads/")
+
 
 class InstalacionApp:
     def __init__(self, ventana):
         self.ventana = ventana
         self.ventana.geometry("600x400")
         self.ventana.title("Asistente de Instalación")
+        
 
-        self.style = ThemedStyle(self.ventana)
-        self.style.set_theme("equilux")
-        self.style.theme_use('equilux')
         self.ventana.resizable(0, 0)
 
         self.ubicacion_seleccionada = 'C:/Program Files'
@@ -198,6 +1197,11 @@ class InstalacionApp:
         self.count2 = 0
         
         self.introduccion()
+        
+        self.progreso_actual = tk.DoubleVar()
+        self.radio_var = tk.IntVar(value=0)
+        self.check_var_dsk = tk.IntVar()
+        self.check_var_ex = tk.IntVar()
 
     def seleccionar_ubicacion(self):
         self.ubicacion_seleccionada = filedialog.askdirectory()
@@ -223,42 +1227,97 @@ class InstalacionApp:
             self.actualizar_entry.delete(0, 100)
             self.actualizar_entry.insert(0, self.ubicacion_database)
 
+        with bloqueo:
+            self.progreso_actual.set(0)  
+            self.ventana.update()
+
+    def graficos(self):
+        self.regresar_1_button.destroy()
+        self.boton_instalar.destroy()
+        
+        self.instalar_progreso.grid(
+                    row=0, column=0, padx=(40,  0), pady=(120, 0))
+
+        self.progreso_label.configure(text="Instalando...")
+        
+        
+        with bloqueo:
+            self.progreso_actual.set(0)  
+            self.ventana.update()
+
     def instalar(self):
-        if self.ubicacion_seleccionada:
-            self.instalar_progreso.grid(
-                row=0, column=0, padx=(0, 20), pady=(0, 0))
+        
+        self.progreso_actual.set(0)
 
-            self.progreso_label.insert(
-                index="0.0", text="Instalando...")
-            self.progreso_label.configure(state="disabled")
-            self.regresar_1_button.destroy()
+        self.graficos()
+        self.crear_carpetas()
+        self.copiar_archivos()
+        self.crear_archivos_keys()
+        self.crear_archivos_app()
+
+        hilo = threading.Thread(target=self.metodo_pyinstaller)
+        hilo.start()
+        hilo.join()
+
+        self.mover_archivos()
+        self.eliminar_archivos()
+        self.proceso_db()
+        self.write_version()
 
 
+        self.exito()
 
-            # Crear las carpetas necesarias en la ubicación seleccionada
-            self.crear_carpetas()
-            
-            # Copiar los archivos a las carpetas correspondientes
-            self.copiar_archivos()
-            self.variable_entorno()
-            self.crear_archivos()
-            self.write_version()
-            store_passwords(self.ubicacion_database + '/datos_usuarios.db')
+    def metodo_pyinstaller(self):
+        time.sleep(1)
+        archivo_python = os.path.join(self.ubicacion_seleccionada, 'Administrador de contraseñas/app/admin_contrasenas.py')
+        archivo_spec = 'admin_contrasenas.spec'
+        ejecutar_pyinstaller(archivo_python, archivo_spec)
+        with bloqueo:
+            self.progreso_actual.set(60)  
+            self.ventana.update()
 
-            self.exito()
-        else:
-            tk.messagebox.showwarning(
-                "Advertencia", "Debes seleccionar una ubicación de instalación.")
+    def proceso_db(self):
+        time.sleep(1)
+        if self.check_version() is False:
+            if self.radio_var.get() == 1:
+                if self.ubicacion_database != self.ubicacion_seleccionada + '/Administrador de contraseñas/database':
+                    store_passwords(self.ubicacion_database + '/datos_usuarios.db')
+
+        with bloqueo:
+            self.progreso_actual.set(90)  
+            self.ventana.update()
+                      
+    def mover_archivos(self):
+        time.sleep(1)
+        source_dir = os.path.join(self.ubicacion_seleccionada, 'Administrador de contraseñas/app/dist/admin_contrasenas')
+        destination_dir = os.path.join(self.ubicacion_seleccionada, 'Administrador de contraseñas')
+
+        contents = os.listdir(source_dir)
+
+        for item in contents:
+            source_item = os.path.join(source_dir, item)
+            destination_item = os.path.join(destination_dir, item)
+            shutil.move(source_item, destination_item)
+
+        with bloqueo:
+            self.progreso_actual.set(70)  
+            self.ventana.update()
+
+    def eliminar_archivos(self):
+        time.sleep(1)
+        directory_path = os.path.join(self.ubicacion_seleccionada, 'Administrador de contraseñas/app')
+        shutil.rmtree(directory_path)
+
+        with bloqueo:
+            self.progreso_actual.set(80)  
+            self.ventana.update()
 
     def crear_carpetas(self):
-        # Crear las carpetas necesarias en la ubicación seleccionada
+        time.sleep(1)  
 
         ruta_principal = os.path.join(
             self.ubicacion_seleccionada, "Administrador de contraseñas")
         os.makedirs(ruta_principal, exist_ok=True)
-
-        ruta_graficos = os.path.join(ruta_principal, "image")
-        os.makedirs(ruta_graficos, exist_ok=True)
 
         ruta_basedatos = os.path.join(ruta_principal, "database")
         os.makedirs(ruta_basedatos, exist_ok=True)
@@ -269,7 +1328,13 @@ class InstalacionApp:
         ruta_version = os.path.join(ruta_principal, "version")
         os.makedirs(ruta_version, exist_ok=True)
 
+        with bloqueo:
+            self.progreso_actual.set(10)  
+            self.ventana.update()
+
     def copiar_archivos(self):
+        time.sleep(1)
+
         ubicacion = Path(self.ubicacion_seleccionada + '/Administrador de contraseñas/database/codigo_acceso.db')
         try:
             if self.ubicacion_database != self.ubicacion_seleccionada + '/Administrador de contraseñas/database':
@@ -293,7 +1358,12 @@ class InstalacionApp:
         except SameFileError:
             print("Los archivos ya existen")
 
-    def crear_archivos(self):
+        with bloqueo:
+            self.progreso_actual.set(20)  
+            self.ventana.update()
+
+    def crear_archivos_keys(self):
+        time.sleep(1)
         claves = {
         "PUBLIC_DB_KEY": public_key_pem.decode().replace('\n', ''),
         "PRIVATE_DB_KEY": private_key_pem.decode().replace('\n', ''),
@@ -319,71 +1389,207 @@ class InstalacionApp:
 
         data = json.dumps(claves, separators=(',', ':'), indent=4)
         Path(self.ubicacion_seleccionada + '/Administrador de contraseñas/backup/keys.json').write_text(data)
+        Path(self.ubicacion_seleccionada + '/Administrador de contraseñas/keys.json').write_text(data)
 
+        with bloqueo:
+            self.progreso_actual.set(30)  
+            self.ventana.update()
+
+    def crear_archivos_app(self):
+        time.sleep(1)
+        ruta_principal = os.path.join(
+            self.ubicacion_seleccionada, "Administrador de contraseñas/app")
+        os.makedirs(ruta_principal, exist_ok=True)
+
+        ruta_client = os.path.join(ruta_principal, "client")
+        os.makedirs(ruta_client, exist_ok=True)
+
+        ruta_model = os.path.join(ruta_principal, "model")
+        os.makedirs(ruta_model, exist_ok=True)
+
+        def create(path,outside_text):
+            main = ruta_principal + path
+
+            with open(main, "w") as file:
+                    
+                file.write(outside_text)
+
+
+        if self.check_version() is False:
+            if self.radio_var.get() == 1:
+
+                create('/admin_contrasenas.py', main_text)
+                create('/model/__init__.py', '')
+                create('/model/admin_dao.py', admin_dao_text)
+                create('/model/conexion_db.py', conexion_db_text)
+                create('/model/key.py', key_text)
+                create('/client/__init__.py', '')
+                create('/client/gui_app.py', gui_app_text)
+                
+
+
+        with bloqueo:
+            self.progreso_actual.set(40)  
+            self.ventana.update()
+                
     def write_version(self):
+        time.sleep(1)
         version = self.ubicacion_seleccionada + '/Administrador de contraseñas/version/version.txt'
         archivo = Path(version)
 
         with open(version, "w") as file:
             texto= "Version 1.2.0"
             file.write(texto)
+        with bloqueo:
+            self.progreso_actual.set(100)  
+            self.ventana.update()
+
+    def renombrar_aplicacion(self, ruta_actual, nuevo_nombre): 
+
+        ruta_absoluta = os.path.abspath(ruta_actual)
+
+        ruta_directorio, nombre_archivo = os.path.split(ruta_absoluta)
+
+        nombre_sin_extension, extension = os.path.splitext(nombre_archivo)
+
+        nuevo_nombre_archivo = nuevo_nombre + extension
+
+        nueva_ruta_absoluta = os.path.join(ruta_directorio, nuevo_nombre_archivo)
+
+        os.rename(ruta_absoluta, nueva_ruta_absoluta)
+
+    def crear_acceso_directo(self, nombre_acceso_directo, ruta_aplicacion):
+        ruta_escritorio = os.path.join(os.path.expanduser("~"), "Desktop")
+        ruta_acceso_directo = os.path.join(ruta_escritorio, nombre_acceso_directo + ".lnk")
+
+        shell = win32com.client.Dispatch("WScript.Shell")
+        acceso_directo = shell.CreateShortcut(ruta_acceso_directo)
+        acceso_directo.TargetPath = ruta_aplicacion
+        acceso_directo.WorkingDirectory = os.path.dirname(ruta_aplicacion)
+        acceso_directo.IconLocation = ruta_aplicacion
+        acceso_directo.Save()
 
     def introduccion(self):
-        self.introduccion_frame = ctk.CTkFrame(
-            self.ventana, width=600, height=600, fg_color="#242424")
+        self.introduccion_frame = tk.Frame(
+            self.ventana, width=600, height=600)
         self.introduccion_frame.grid()
-        self.introduccion_label = ctk.CTkTextbox(
-            self.introduccion_frame, fg_color="#242424", width=400, activate_scrollbars=False)
+        self.introduccion_label = tk.Message(
+            self.introduccion_frame,width=400, text="Bienvenido al asistente de instalacion del gestor de contraseñas\nlos pasos a continuacion te guiaran en el proceso de instalado,\nsi ya tienes alguna version instalada se actualizará.\nPresiona continuar para comenzar la instalación.")
         self.introduccion_label.grid(
-            row=0, column=0, padx=(180, 0), pady=(0, 150))
+            row=0, column=0, padx=(180, 0), pady=(13, 150))
 
-        self.introduccion_label.insert(
-            index="0.0", text="Bienvenido al asistente de instalacion del gestor de contraseñas\nlos pasos a continuacion te guiaran en el proceso de instalado,\nsi ya tienes alguna version instalada se actualizará.\nPresiona continuar para comenzar la instalación.")
-        self.introduccion_label.configure(state="disabled")
-
-        self.introduccion_button = ctk.CTkButton(
-            self.introduccion_frame, text="Continuar", fg_color="#242424", hover_color="#2b2b2b", command=self.ubicacion, width=100)
+        self.introduccion_button = tk.Button(
+            self.introduccion_frame, text="Continuar",width=10,command=self.install_python)
         self.introduccion_button.grid(
-            row=1, column=0, padx=(450, 0), pady=(10, 0))
+            row=1, column=0, padx=(450, 0), pady=(117, 0))
+
+    def install_python(self):
+        if python_exists() is False:
+
+            self.introduccion_frame.destroy()
+
+            self.python_frame = tk.Frame(
+                self.ventana, width=600, height=600, )
+            self.python_frame.grid(pady=(0,0))
+
+            
+            self.python_label = tk.Message(
+                self.python_frame, width=500,text="No tienes Python instalado en tu sistema operativo, preciona el boton debajo para instalarlo y poder seguir con la instalación. ")
+            self.python_label.grid(
+                row=0, column=0, padx=(25, 0), pady=(13, 150))
+
+            self.python_button = tk.Button(
+                self.python_frame, text="Instalar Python", command=instalar_python)
+            self.python_button.grid(
+                row=0, column=0, padx=(70, 0), pady=(0, 50))
+
+            self.continuar_button = tk.Button(
+                self.python_frame, text="Continuar",width=10,command=self.ubicacion)
+            self.continuar_button.grid(
+                row=1, column=0, padx=(450, 0), pady=(147, 0))
+
+        else:
+            self.ubicacion()
 
     def ubicacion(self):
-        self.introduccion_frame.destroy()
+        if python_exists() is True:
 
-        self.count = self.count + 1 
+            try:
 
-        if self.count >= 2:
-            self.actualizar_frame.destroy()
-        
-            
-        self.ubicacion_frame = ctk.CTkFrame(
-            self.ventana, width=600, height=600, fg_color="#242424")
-        self.ubicacion_frame.grid()
+                self.python_frame.destroy()
 
-        self.ubicacion_label = ctk.CTkTextbox(
-            self.ubicacion_frame, fg_color="#242424", width=600, activate_scrollbars=False)
-        self.ubicacion_label.grid(
-            row=0, column=0, padx=(10, 0), pady=(10, 0))
+                self.count = self.count + 1 
 
-        self.ubicacion_label.insert(
-            index="0.0", text="La ubicacion predeterminada es en archivos del programa, si decides cambiar la ubicacion recuerda\nque podria afectar el funcionamiento de algunas caracteristicas de la aplicacion.")
-        self.ubicacion_label.configure(state="disabled")
+                if self.count >= 2:
+                    self.actualizar_frame.destroy()
+                
+                    
 
-        self.ubicacion_entry = ctk.CTkEntry(
-            self.ubicacion_frame,  fg_color="#242424", border_color="#2b2b2b", border_width=1, width=400)
-        self.ubicacion_entry.grid(
-            row=0, column=0, padx=(0, 170), pady=(0, 50))
+                self.ubicacion_frame = tk.Frame(
+                    self.ventana, width=600, height=600, )
+                self.ubicacion_frame.grid(pady=(0,0))
 
-        self.ubicacion_entry.insert(0, self.ubicacion_seleccionada)
+                
+                self.ubicacion_label = tk.Message(
+                    self.ubicacion_frame, width=500,text="La ubicacion predeterminada es en archivos del programa, si decides cambiar la ubicacion recuerda que podria afectar el funcionamiento de algunas caracteristicas de la aplicacion." )
+                self.ubicacion_label.grid(
+                    row=0, column=0, padx=(25, 0), pady=(13, 150))
 
-        self.ubicacion_button = ctk.CTkButton(
-            self.ubicacion_frame, text="Seleccionar ubicacion", fg_color="#242424", hover_color="#2b2b2b", command=self.seleccionar_ubicacion, width=100)
-        self.ubicacion_button.grid(
-            row=0, column=0, padx=(410, 0), pady=(0, 50))
+                self.ubicacion_entry = tk.Entry(
+                    self.ubicacion_frame, width=50)
+                self.ubicacion_entry.grid(
+                    row=0, column=0, padx=(0, 145), pady=(0, 50))
 
-        self.ubicacion_cont_button = ctk.CTkButton(
-            self.ubicacion_frame, text="Continuar", fg_color="#242424", hover_color="#2b2b2b", command=self.actualizar, width=100)
-        self.ubicacion_cont_button.grid(
-            row=1, column=0, padx=(420, 0), pady=(150, 0))
+                self.ubicacion_entry.insert(0, self.ubicacion_seleccionada)
+
+                self.ubicacion_button = tk.Button(
+                    self.ubicacion_frame, text="Seleccionar ubicacion",command=self.seleccionar_ubicacion)
+                self.ubicacion_button.grid(
+                    row=0, column=0, padx=(404, 0), pady=(0, 50))
+
+                self.ubicacion_cont_button = tk.Button(
+                    self.ubicacion_frame, text="Continuar",width=10,command=self.actualizar)
+                self.ubicacion_cont_button.grid(
+                    row=1, column=0, padx=(450, 0), pady=(147, 0))
+
+            except:
+                self.introduccion_frame.destroy()
+
+                self.count = self.count + 1 
+
+                if self.count >= 2:
+                    self.actualizar_frame.destroy()
+                
+                    
+
+                self.ubicacion_frame = tk.Frame(
+                    self.ventana, width=600, height=600, )
+                self.ubicacion_frame.grid(pady=(0,0))
+
+                
+                self.ubicacion_label = tk.Message(
+                    self.ubicacion_frame, width=500,text="La ubicacion predeterminada es en archivos del programa, si decides cambiar la ubicacion recuerda que podria afectar el funcionamiento de algunas caracteristicas de la aplicacion." )
+                self.ubicacion_label.grid(
+                    row=0, column=0, padx=(25, 0), pady=(13, 150))
+
+                self.ubicacion_entry = tk.Entry(
+                    self.ubicacion_frame, width=50)
+                self.ubicacion_entry.grid(
+                    row=0, column=0, padx=(0, 145), pady=(0, 50))
+
+                self.ubicacion_entry.insert(0, self.ubicacion_seleccionada)
+
+                self.ubicacion_button = tk.Button(
+                    self.ubicacion_frame, text="Seleccionar ubicacion",command=self.seleccionar_ubicacion)
+                self.ubicacion_button.grid(
+                    row=0, column=0, padx=(404, 0), pady=(0, 50))
+
+                self.ubicacion_cont_button = tk.Button(
+                    self.ubicacion_frame, text="Continuar",width=10,command=self.actualizar)
+                self.ubicacion_cont_button.grid(
+                    row=1, column=0, padx=(450, 0), pady=(147, 0))
+        else:
+            messagebox.showwarning("Requisito necesario","Es necesario que instales python para seguir con la instalación.")
 
     def actualizar(self):
         self.ubicacion_frame.destroy()
@@ -405,44 +1611,37 @@ class InstalacionApp:
                 self.instalar_frame.destroy()
 
 
-        self.actualizar_frame = ctk.CTkFrame(
-            self.ventana, width=600, height=600, fg_color="#242424")
+        self.actualizar_frame = tk.Frame(
+            self.ventana, width=600, height=600)
         self.actualizar_frame.grid()
 
-        self.actualizar_label = ctk.CTkTextbox(
-            self.actualizar_frame, fg_color="#242424", width=600, activate_scrollbars=False)
+        self.actualizar_label = tk.Message(
+            self.actualizar_frame, width=500,text="Si anteriormente instalaste la aplicacion en otra ubicacion seleccionala a continuacion.\nSino preciona continuar.")
         self.actualizar_label.grid(
-            row=0, column=0, padx=(10, 0), pady=(10, 0))
+            row=0, column=0, padx=(4, 0), pady=(13, 150))
 
-        self.actualizar_label.insert(
-            index="0.0", text="Si es tu primera vez instalando la aplicacion presiona continuar.\nSi ya habias descargado antes la aplicacion se conservaran las contraseñas que has guardado.\nSi antes instalaste la aplicacion en la ubicacion predeterminada presiona continuar.\nSi instalaste la aplicacion en otra ubicacion seleccionala a continuacion.")
-        self.actualizar_label.configure(state="disabled")
-
-        self.actualizar_entry = ctk.CTkEntry(
-            self.actualizar_frame,  fg_color="#242424", border_color="#2b2b2b", border_width=1, width=400)
+        self.actualizar_entry = tk.Entry(
+            self.actualizar_frame, width=50)
         self.actualizar_entry.grid(
-            row=0, column=0, padx=(0, 170), pady=(0, 0))
+            row=0, column=0, padx=(0, 145), pady=(0, 50))
 
         self.actualizar_entry.insert(
             0, self.ubicacion_database)
 
-        self.continuar_button = ctk.CTkButton(
-            self.actualizar_frame, text="Seleccionar ubicacion", fg_color="#242424", hover_color="#2b2b2b", command=self.seleccionar_ubicacion_db, width=100)
+        self.continuar_button = tk.Button(
+            self.actualizar_frame, text="Seleccionar ubicacion",command=self.seleccionar_ubicacion_db)
         self.continuar_button.grid(
-            row=0, column=0, padx=(410, 0), pady=(0, 0))
+            row=0, column=0, padx=(404, 0), pady=(0, 50))
 
-        self.continuar_button_cont_button = ctk.CTkButton(
-            self.actualizar_frame, text="Continuar", fg_color="#242424", hover_color="#2b2b2b", command=self.encriptacion, width=100)
+        self.continuar_button_cont_button = tk.Button(
+            self.actualizar_frame, text="Continuar", width=10,command=self.encriptacion)
         self.continuar_button_cont_button.grid(
-            row=1, column=0, padx=(420, 0), pady=(150, 0))
+            row=1, column=0, padx=(450, 0), pady=(147, 0))
 
-        self.regresar_button = ctk.CTkButton(
-            self.actualizar_frame, text="Regresar", fg_color="#242424", hover_color="#2b2b2b", command=self.ubicacion, width=100)
+        self.regresar_button = tk.Button(
+            self.actualizar_frame, text="Regresar",width=10 ,command=self.ubicacion)
         self.regresar_button.grid(
-            row=1, column=0, padx=(0, 450), pady=(150, 0))
-
-    def radiobutton_event(self):
-        print("radiobutton toggled, current value:", self.radio_var.get())
+            row=1, column=0, padx=(0, 310), pady=(147, 0))
 
     def check_version(self):
         version = self.ubicacion_seleccionada + '/Administrador de contraseñas/version/version.txt'
@@ -474,50 +1673,37 @@ class InstalacionApp:
                 self.instalar_frame.destroy()
 
 
-            self.encriptacion_frame = ctk.CTkFrame(
-                self.ventana, width=600, height=600, fg_color="#242424")
+            self.encriptacion_frame = tk.Frame(
+                self.ventana, width=600, height=600)
             self.encriptacion_frame.grid()
 
-            self.radio_var = tk.IntVar(value=0)
-
-            self.encriptacion_label = ctk.CTkTextbox(
-                self.encriptacion_frame, fg_color="#242424", width=600, activate_scrollbars=False)
+            self.encriptacion_label = tk.Message(
+                self.encriptacion_frame, width=600,text="La nueva version del administrador de contraseñas ofrece un nuevo y mas seguro metodo de cifrado,\nlo que mantiene tus contraseñas mas seguras.\nEs recomendable actualizar a este nuevo metodo de cifrado, pero si lo deseas puedes seguir usando \nel metodo antigüo.")
             self.encriptacion_label.grid(
-                row=0, column=0, padx=(10, 0), pady=(0, 60))
-
-            self.encriptacion_label.insert(
-                index="0.0", text="La nueva version del administrador de contraseñas ofrece un nuevo y mas seguro metodo de cifrado,\nlo que mantiene tus contraseñas mas seguras.\nEs recomendable actualizar a este nuevo metodo de cifrado, pero si lo deseas puedes seguir usando \nel metodo antigüo.")
-            self.encriptacion_label.configure(state="disabled")
-
-            self.new_encryption = ctk.CTkRadioButton(self.encriptacion_frame,command=self.radiobutton_event ,border_width_unchecked=2 ,radiobutton_width=8,variable= self.radio_var,value=1 ,radiobutton_height=8 ,  width=100, height=4,text="Nuevo metodo de cifrado (recomendado)")
-            self.new_encryption.grid(row=0, column=0, padx=(0, 250), pady=(0, 0))
-
-            self.new_encryption_desc = ctk.CTkTextbox(self.encriptacion_frame, fg_color="#242424", width=400, height=50 ,activate_scrollbars=False)
-            self.new_encryption_desc.grid(row=0, column=0, padx=(0, 100), pady=(80, 0))
-
-            self.new_encryption_desc.insert(index="0.0", text="El nuevo metodo usa cifrado asimetrico para incrementar la\nseguridad a la hora de guardar y acceder a tus contraseñas.")
-            self.new_encryption_desc.configure(state="disabled")
+                row=0, column=0, padx=(33, 0), pady=(0, 174))
 
 
-            self.old_encryption = ctk.CTkRadioButton(self.encriptacion_frame,command=self.radiobutton_event ,border_width_unchecked=2 ,radiobutton_width=8,variable= self.radio_var,value=2 ,radiobutton_height=8 ,  width=100, height=4,text="Antigüo metodo de cifrado")
+            self.new_encryption =tk.Radiobutton(self.encriptacion_frame,variable= self.radio_var,value=1 ,text="Nuevo metodo de cifrado (recomendado)")
+            self.new_encryption.grid(row=0, column=0, padx=(0, 250), pady=(0, 10))
+
+            self.new_encryption_desc = tk.Message(self.encriptacion_frame,  width=500, text="El nuevo metodo usa cifrado asimetrico para incrementar la\nseguridad a la hora de guardar y acceder a tus contraseñas.")
+            self.new_encryption_desc.grid(row=0, column=0, padx=(0, 105), pady=(60, 0))
+
+            self.old_encryption = tk.Radiobutton(self.encriptacion_frame,variable= self.radio_var,value=2 ,text="Antigüo metodo de cifrado")
             self.old_encryption.grid(row=0, column=0, padx=(0, 330), pady=(150, 0))
 
-            self.old_encryption_desc = ctk.CTkTextbox(self.encriptacion_frame, fg_color="#242424", width=400, height=50 ,activate_scrollbars=False)
-            self.old_encryption_desc.grid(row=0, column=0, padx=(0, 100), pady=(230, 0))
+            self.old_encryption_desc = tk.Message(self.encriptacion_frame,  width=500, text="El viejo metodo usa cifrado simetrico lo que limita la \nseguridad a la hora de guardar y acceder a tus contraseñas.")
+            self.old_encryption_desc.grid(row=0, column=0, padx=(0, 108), pady=(230, 0))
 
-            self.old_encryption_desc.insert(index="0.0", text="El viejo metodo usa cifrado simetrico lo que limita la \nseguridad a la hora de guardar y acceder a tus contraseñas.")
-            self.old_encryption_desc.configure(state="disabled")
-
-
-            self.continuar_encriptacion_button = ctk.CTkButton(
-                self.encriptacion_frame, text="Continuar", fg_color="#242424", hover_color="#2b2b2b", command=self.instalacion, width=100)
+            self.continuar_encriptacion_button = tk.Button(
+                self.encriptacion_frame, text="Continuar",width=10,command=self.instalacion)
             self.continuar_encriptacion_button.grid(
-                row=1, column=0, padx=(420, 0), pady=(80, 0))
+                row=1, column=0, padx=(401, 0), pady=(80, 0))
 
-            self.regresar_encriptacion_button = ctk.CTkButton(
-                self.encriptacion_frame, text="Regresar", fg_color="#242424", hover_color="#2b2b2b", command=self.actualizar, width=100)
+            self.regresar_encriptacion_button = tk.Button(
+                self.encriptacion_frame, text="Regresar",width=10,command=self.actualizar)
             self.regresar_encriptacion_button.grid(
-                row=1, column=0, padx=(0, 450), pady=(80, 0))
+                row=1, column=0, padx=(0, 359), pady=(80, 0))
         else:
             self.instalacion()
 
@@ -533,35 +1719,32 @@ class InstalacionApp:
                 self.count2 = self.count2 + 1
 
 
-                self.instalar_frame = ctk.CTkFrame(
-                    self.ventana, width=600, height=600, fg_color="#242424")
+                self.instalar_frame = tk.Frame(
+                    self.ventana, width=600, height=600)
                 self.instalar_frame.grid()
 
-                self.instalar_label = ctk.CTkTextbox(
-                    self.instalar_frame, fg_color="#242424", width=600, activate_scrollbars=False)
+                self.instalar_label = tk.Message(
+                    self.instalar_frame,width=500, text="Presiona instalar para comenzar con la instalacion.")
                 self.instalar_label.grid(
-                    row=0, column=0, padx=(10, 0), pady=(10, 0))
+                    row=0, column=0, padx=(0, 190), pady=(6, 90))
 
-                self.instalar_label.insert(
-                    index="0.0", text="Presiona instalar para comenzar con la instalacion.")
-                self.instalar_label.configure(state="disabled")
 
-                self.instalar_progreso = ctk.CTkProgressBar(
-                    self.instalar_frame,  fg_color="#242424", border_color="#2b2b2b", progress_color="Green", border_width=1, width=500)
+                self.instalar_progreso = ttk.Progressbar (
+                    self.instalar_frame,variable=self.progreso_actual, length=500,mode='determinate')
 
-                self.progreso_label = ctk.CTkTextbox(
-                    self.instalar_frame, fg_color="#242424", width=100, height=5, activate_scrollbars=False)
+                self.progreso_label = tk.Message(
+                    self.instalar_frame, width=100)
                 self.progreso_label.grid(
-                    row=0, column=0, padx=(0, 430), pady=(0, 40))
+                    row=0, column=0, padx=(0, 390), pady=(40, 0))
 
-                self.boton_instalar = ctk.CTkButton(
-                    self.instalar_frame, text="Instalar", fg_color="#242424", hover_color="#2b2b2b", width=100, command=self.instalar)
-                self.boton_instalar.grid(row=1, column=0, padx=(420, 0), pady=(150, 0))
+                self.boton_instalar = tk.Button(
+                    self.instalar_frame, text="Instalar", width=10,command=self.instalar)
+                self.boton_instalar.grid(row=1, column=0, padx=(450, 0), pady=(230, 0))
 
-                self.regresar_1_button = ctk.CTkButton(
-                    self.instalar_frame, text="Regresar", fg_color="#242424", hover_color="#2b2b2b", width=100, command= self.encriptacion)
+                self.regresar_1_button = tk.Button(
+                    self.instalar_frame, text="Regresar", width=10,command= self.encriptacion)
                 self.regresar_1_button.grid(
-                    row=1, column=0, padx=(0, 450), pady=(150, 0))
+                    row=1, column=0, padx=(0,310), pady=(230, 0))
 
         except AttributeError:
             print("Accediendo con version ")
@@ -578,57 +1761,54 @@ class InstalacionApp:
                 if self.count1 >= 2:
                     self.count2 = 1
 
-            
-
-            self.instalar_frame = ctk.CTkFrame(
-                    self.ventana, width=600, height=600, fg_color="#242424")
+            self.instalar_frame = tk.Frame(
+                    self.ventana, width=600, height=600)
             self.instalar_frame.grid()
 
-            self.instalar_label = ctk.CTkTextbox(
-                    self.instalar_frame, fg_color="#242424", width=600, activate_scrollbars=False)
+            self.instalar_label = tk.Message(
+                    self.instalar_frame,width=500, text="Presiona instalar para comenzar con la instalacion.")
             self.instalar_label.grid(
-                    row=0, column=0, padx=(10, 0), pady=(10, 0))
+                    row=0, column=0, padx=(0, 190), pady=(6, 90))
 
-            self.instalar_label.insert(
-                    index="0.0", text="Presiona instalar para comenzar con la instalacion.")
-            self.instalar_label.configure(state="disabled")
 
-            self.instalar_progreso = ctk.CTkProgressBar(
-                    self.instalar_frame,  fg_color="#242424", border_color="#2b2b2b", progress_color="Green", border_width=1, width=500)
+            self.instalar_progreso = ttk.Progressbar (
+                    self.instalar_frame,variable=self.progreso_actual, length=500,mode='determinate')
 
-            self.progreso_label = ctk.CTkTextbox(
-                    self.instalar_frame, fg_color="#242424", width=100, height=5, activate_scrollbars=False)
+            self.progreso_label = tk.Message(
+                    self.instalar_frame, width=100)
             self.progreso_label.grid(
-                    row=0, column=0, padx=(0, 430), pady=(0, 40))
+                    row=0, column=0, padx=(0, 390), pady=(40, 0))
 
-            self.boton_instalar = ctk.CTkButton(
-                    self.instalar_frame, text="Instalar", fg_color="#242424", hover_color="#2b2b2b", width=100, command=self.instalar)
-            self.boton_instalar.grid(row=1, column=0, padx=(420, 0), pady=(150, 0))
+            self.boton_instalar = tk.Button(
+                    self.instalar_frame, text="Instalar", width=10,command=self.instalar)
+            self.boton_instalar.grid(row=1, column=0, padx=(450, 0), pady=(230, 0))
 
-            self.regresar_1_button = ctk.CTkButton(
-                    self.instalar_frame, text="Regresar", fg_color="#242424", hover_color="#2b2b2b", width=100, command= self.actualizar)
+            self.regresar_1_button = tk.Button(
+                    self.instalar_frame, text="Regresar", width=10,command= self.encriptacion)
             self.regresar_1_button.grid(
-                    row=1, column=0, padx=(0, 450), pady=(150, 0))
+                    row=1, column=0, padx=(0,310), pady=(230, 0))
 
     def exito(self):
         self.instalar_frame.destroy()
 
-        self.exito_frame = ctk.CTkFrame(self.ventana, width=600, height=600, fg_color="#242424")
+        self.exito_frame = tk.Frame(self.ventana, width=600, height=600)
         self.exito_frame.grid()
 
-        self.exito_label = ctk.CTkTextbox(
-            self.exito_frame, fg_color="#242424", width=600, activate_scrollbars=False)
+        self.exito_label = tk.Message(
+            self.exito_frame, width=600,text="Instalacion completada con exito." )
         self.exito_label.grid(
-            row=0, column=0, padx=(10, 0), pady=(10, 0))
+            row=0, column=0, padx=(181, 0), pady=(0, 50))
 
-        self.exito_label.insert(
-            index="0.0", text="Instalacion completada con exito.")
-        self.exito_label.configure(state="disabled")
+        self.shortcut_dsk = tk.Checkbutton(self.exito_frame, text="Agregar atajo al escritorio", variable=self.check_var_dsk)
+        self.shortcut_dsk.grid(row=0, column=0, padx=(180, 0), pady=(40, 0))
 
-        self.close_button = ctk.CTkButton(
-            self.exito_frame, text="Terminar", fg_color="#242424", hover_color="#2b2b2b", width=100, command= self.ventana.destroy)
+        self.execute = tk.Checkbutton(self.exito_frame, text="Abrir aplicacion al finalizar", variable=self.check_var_ex)
+        self.execute.grid(row=0, column=0, padx=(180, 0), pady=(120, 0))
+
+        self.close_button = tk.Button(
+            self.exito_frame, text="Terminar",width=10,command= self.terminar)
         self.close_button.grid(
-            row=1, column=0, padx=(420, 0), pady=(150, 0))
+            row=1, column=0, padx=(450, 0), pady=(203, 0))
 
     def variable_entorno(self):
 
@@ -678,12 +1858,21 @@ class InstalacionApp:
         # Cerrar la clave del Registro del sistema
         winreg.CloseKey(clave_reg)
 
+    def terminar(self):
+        nombre_acceso_directo = "Administrador de contraseñas"
+        ruta_aplicacion = os.path.join(self.ubicacion_seleccionada, 'Administrador de contraseñas/admin_contrasenas.exe')
 
-# Crear la ventana principal
-ventana = ctk.CTk()
+        if self.check_var_dsk.get() == 1:
+            self.crear_acceso_directo(nombre_acceso_directo,ruta_aplicacion)
 
-# Crear la instancia de la aplicación
+        if self.check_var_ex.get() == 1:
+            subprocess.run(ruta_aplicacion)
+
+
+        self.ventana.destroy()
+
+ventana = tk.Tk()
+
 app = InstalacionApp(ventana)
 
-# Iniciar el bucle principal de la ventana
 ventana.mainloop()
