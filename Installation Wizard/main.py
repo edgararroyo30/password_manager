@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from ttkthemes import ThemedStyle
+from PIL import ImageTk, Image
 import shutil
 import os
 import winreg
@@ -17,7 +18,8 @@ import time
 import threading
 import win32com.client
 import webbrowser
-
+import sys
+import base64
 
 main_text=""" 
 import customtkinter as ctk
@@ -28,6 +30,7 @@ from client.gui_app import Frame
 def main():
     root = ctk.CTk()
     root.title('Administrador de contrasenas')
+    root.iconbitmap('image/app-icon.ico')
     root.resizable(0, 0)
 
     app = Frame(root=root)
@@ -950,18 +953,16 @@ class Frame(ttk.Frame):
                 tree.item(item, tags=("searched_row",))
 """
 
-manifest_text = """
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
-    <security>
-      <requestedPrivileges>
-        <requestedExecutionLevel level="requireAdministrator" uiAccess="false"/>
-      </requestedPrivileges>
-    </security>
-  </trustInfo>
-</assembly>
+
+app_icon = """
+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
 """
+if getattr(sys, 'frozen', False):
+    # Running as a bundled executable
+    base_dir = sys._MEIPASS
+else:
+    # Running as a normal script
+    base_dir = os.path.dirname(os.path.abspath(__file__))
 
 private_key = rsa.generate_private_key(
             public_exponent=65537,
@@ -1164,7 +1165,7 @@ def ejecutar_pyinstaller(ruta_archivo,ruta_spec):
 
     ctk_path = location_linea.strip()
 
-    run = f"""pyinstaller --noconfirm --onedir --windowed --add-data "{ctk_path}/customtkinter;customtkinter/"  {nombre_archivo}""" 
+    run = f"""pyinstaller --noconfirm --onedir --icon=app-icon.ico --windowed --add-data "{ctk_path}/customtkinter;customtkinter/"  {nombre_archivo}""" 
     subprocess.run(run, shell=True)
 
 def python_exists():
@@ -1180,13 +1181,14 @@ def python_exists():
 def instalar_python():
     webbrowser.open("https://www.python.org/downloads/")
 
-
 class InstalacionApp:
     def __init__(self, ventana):
         self.ventana = ventana
         self.ventana.geometry("600x400")
         self.ventana.title("Asistente de Instalación")
-        
+        self.ventana.configure(bg="#f0f0f0")
+        self.icon = os.path.join(base_dir, 'installer-icon.ico')
+        self.ventana.iconbitmap(self.icon)
 
         self.ventana.resizable(0, 0)
 
@@ -1196,12 +1198,14 @@ class InstalacionApp:
         self.count1 = 0
         self.count2 = 0
         
+        self.image = os.path.join(base_dir, "code_image.jpg")
+
+
         self.introduccion()
         
         self.progreso_actual = tk.DoubleVar()
         self.radio_var = tk.IntVar(value=0)
-        self.check_var_dsk = tk.IntVar()
-        self.check_var_ex = tk.IntVar()
+        
 
     def seleccionar_ubicacion(self):
         self.ubicacion_seleccionada = filedialog.askdirectory()
@@ -1234,11 +1238,24 @@ class InstalacionApp:
     def graficos(self):
         self.regresar_1_button.destroy()
         self.boton_instalar.destroy()
+        self.instalar_label.destroy()
+
+        self.title_label.configure(text="Instalando")
+        self.title_label.grid(row=0, column=0, padx=(0,175), pady=(10,0))
+        self.title_message.configure(text="Espera hasta que el proceso de instalacion finalice")
+        self.title_message.grid(row=1, column=0, padx=(20,0), pady=(5,0))
         
         self.instalar_progreso.grid(
-                    row=0, column=0, padx=(40,  0), pady=(120, 0))
+                    row=0, column=0, padx=(0,  0), pady=(50, 0))
 
         self.progreso_label.configure(text="Instalando...")
+        self.progreso_label.grid(
+                    row=0, column=0, padx=(0, 435), pady=(0, 0))
+
+        self.proceso = tk.Label(
+        self.instalar_frame,width=71 ,  anchor="w")
+        self.proceso.grid(
+                    row=0, column=0, padx=(0, 0), pady=(100, 0))
         
         
         with bloqueo:
@@ -1254,7 +1271,7 @@ class InstalacionApp:
         self.copiar_archivos()
         self.crear_archivos_keys()
         self.crear_archivos_app()
-
+    
         hilo = threading.Thread(target=self.metodo_pyinstaller)
         hilo.start()
         hilo.join()
@@ -1268,6 +1285,7 @@ class InstalacionApp:
         self.exito()
 
     def metodo_pyinstaller(self):
+        self.proceso.configure(text="Compilando aplicacion")
         time.sleep(1)
         archivo_python = os.path.join(self.ubicacion_seleccionada, 'Administrador de contraseñas/app/admin_contrasenas.py')
         archivo_spec = 'admin_contrasenas.spec'
@@ -1277,6 +1295,7 @@ class InstalacionApp:
             self.ventana.update()
 
     def proceso_db(self):
+        self.proceso.configure(text="Copiando base de datos")   
         time.sleep(1)
         if self.check_version() is False:
             if self.radio_var.get() == 1:
@@ -1284,10 +1303,11 @@ class InstalacionApp:
                     store_passwords(self.ubicacion_database + '/datos_usuarios.db')
 
         with bloqueo:
-            self.progreso_actual.set(90)  
+            self.progreso_actual.set(90)
             self.ventana.update()
                       
     def mover_archivos(self):
+        self.proceso.configure(text="Moviendo archivos")
         time.sleep(1)
         source_dir = os.path.join(self.ubicacion_seleccionada, 'Administrador de contraseñas/app/dist/admin_contrasenas')
         destination_dir = os.path.join(self.ubicacion_seleccionada, 'Administrador de contraseñas')
@@ -1304,6 +1324,7 @@ class InstalacionApp:
             self.ventana.update()
 
     def eliminar_archivos(self):
+        self.proceso.configure(text="Eliminando archivos temporales")
         time.sleep(1)
         directory_path = os.path.join(self.ubicacion_seleccionada, 'Administrador de contraseñas/app')
         shutil.rmtree(directory_path)
@@ -1313,6 +1334,7 @@ class InstalacionApp:
             self.ventana.update()
 
     def crear_carpetas(self):
+        self.proceso.configure(text="Creando carpetas")
         time.sleep(1)  
 
         ruta_principal = os.path.join(
@@ -1321,6 +1343,9 @@ class InstalacionApp:
 
         ruta_basedatos = os.path.join(ruta_principal, "database")
         os.makedirs(ruta_basedatos, exist_ok=True)
+
+        ruta_image = os.path.join(ruta_principal, "image")
+        os.makedirs(ruta_image, exist_ok=True)
 
         ruta_respaldo = os.path.join(ruta_principal, "backup")
         os.makedirs(ruta_respaldo, exist_ok=True)
@@ -1333,8 +1358,18 @@ class InstalacionApp:
             self.ventana.update()
 
     def copiar_archivos(self):
+        self.proceso.configure(text="Creando archivos de base de datos")
         time.sleep(1)
 
+        def create_icon():
+            icon_data = base64.b64decode(app_icon)
+
+            ruta = self.ubicacion_seleccionada + '/Administrador de contraseñas/image/app-icon.ico'
+
+            with open(ruta, 'wb') as f:
+                f.write(icon_data)
+
+        create_icon()
         ubicacion = Path(self.ubicacion_seleccionada + '/Administrador de contraseñas/database/codigo_acceso.db')
         try:
             if self.ubicacion_database != self.ubicacion_seleccionada + '/Administrador de contraseñas/database':
@@ -1363,6 +1398,7 @@ class InstalacionApp:
             self.ventana.update()
 
     def crear_archivos_keys(self):
+        self.proceso.configure(text="Creando archivos de encriptacion")
         time.sleep(1)
         claves = {
         "PUBLIC_DB_KEY": public_key_pem.decode().replace('\n', ''),
@@ -1396,6 +1432,7 @@ class InstalacionApp:
             self.ventana.update()
 
     def crear_archivos_app(self):
+        self.proceso.configure(text="Creando archivos para compilar")
         time.sleep(1)
         ruta_principal = os.path.join(
             self.ubicacion_seleccionada, "Administrador de contraseñas/app")
@@ -1414,6 +1451,13 @@ class InstalacionApp:
                     
                 file.write(outside_text)
 
+        def create_icon():
+            icon_data = base64.b64decode(app_icon)
+
+            ruta = ruta_principal + '/app-icon.ico'
+
+            with open(ruta, 'wb') as f:
+                f.write(icon_data)
 
         if self.check_version() is False:
             if self.radio_var.get() == 1:
@@ -1425,14 +1469,16 @@ class InstalacionApp:
                 create('/model/key.py', key_text)
                 create('/client/__init__.py', '')
                 create('/client/gui_app.py', gui_app_text)
+                create_icon()
                 
 
 
-        with bloqueo:
-            self.progreso_actual.set(40)  
-            self.ventana.update()
+        
+        self.progreso_actual.set(40)  
+        self.ventana.update()
                 
     def write_version(self):
+        self.proceso.configure(text="Escribiendo version actual")
         time.sleep(1)
         version = self.ubicacion_seleccionada + '/Administrador de contraseñas/version/version.txt'
         archivo = Path(version)
@@ -1470,43 +1516,90 @@ class InstalacionApp:
         acceso_directo.Save()
 
     def introduccion(self):
+        
+        
         self.introduccion_frame = tk.Frame(
             self.ventana, width=600, height=600)
-        self.introduccion_frame.grid()
+        self.introduccion_frame.grid(column=1, row=0)
+
+        self.side_frame = tk.Frame(self.ventana, width=130, height=600)
+        self.side_frame.grid(column=0, row=0)
+        self.side_frame.grid_propagate(False)
+
+        canvas = tk.Canvas(self.side_frame,width=130,bg="green" ,height=600)
+        canvas.grid()
+        
+
+        imagen = Image.open(self.image)
+        ancho = 130
+        alto = 600
+        imagen =  imagen.resize((ancho, alto), Image.LANCZOS)
+
+        imagen_tk = ImageTk.PhotoImage(imagen)
+        canvas.image = imagen_tk
+
+        x = (130 - ancho) // 2
+        y = (600 - alto) // 2
+
+        
+        canvas.create_image(x, y, anchor="nw", image=imagen_tk)
+        text = "Created by"
+        x = 50  # x-coordinate of text position
+        y = 335  # y-coordinate of text position
+        canvas.create_text(x, y, text=text, fill="White",font=(" Segoe 10"))
+
+        text = "Edgar Arroyo"
+        x = 58  # x-coordinate of text position
+        y = 350  # y-coordinate of text position
+        canvas.create_text(x, y, text=text, fill="White",font=(" Segoe 10"))
+
+
         self.introduccion_label = tk.Message(
             self.introduccion_frame,width=400, text="Bienvenido al asistente de instalacion del gestor de contraseñas\nlos pasos a continuacion te guiaran en el proceso de instalado,\nsi ya tienes alguna version instalada se actualizará.\nPresiona continuar para comenzar la instalación.")
         self.introduccion_label.grid(
-            row=0, column=0, padx=(180, 0), pady=(13, 150))
+            row=0, column=0, padx=(100, 0), pady=(0, 505))
 
         self.introduccion_button = tk.Button(
             self.introduccion_frame, text="Continuar",width=10,command=self.install_python)
         self.introduccion_button.grid(
-            row=1, column=0, padx=(450, 0), pady=(117, 0))
+            row=0, column=0, padx=(273, 0), pady=(124, 0))
 
     def install_python(self):
         if python_exists() is False:
 
             self.introduccion_frame.destroy()
+            self.side_frame.destroy()
+
+            self.upper_frame = tk.Frame(self.ventana,bg="#d9d9d9", width=600, height=70)
+            self.upper_frame.grid(row=0, column=0)
+
+            self.upper_frame.grid_propagate(False)
+
+            self.title_label = tk.Label(self.upper_frame,bg="#d9d9d9", font=(" Segoe 10 bold"),text="Requisito Necesario")
+            self.title_label.grid(row=0, column=0, padx=(0,200), pady=(10,0))
+
+            self.title_message = tk.Message(self.upper_frame,bg="#d9d9d9",width=500,text="Es necesariao instalar lo siguiente para continuar con la instalación")
+            self.title_message.grid(row=1, column=0, padx=(20,0), pady=(5,0))
 
             self.python_frame = tk.Frame(
-                self.ventana, width=600, height=600, )
+                    self.ventana, width=600, height=600, )
             self.python_frame.grid(pady=(0,0))
 
-            
+                
             self.python_label = tk.Message(
-                self.python_frame, width=500,text="No tienes Python instalado en tu sistema operativo, preciona el boton debajo para instalarlo y poder seguir con la instalación. ")
+                    self.python_frame, width=500,text="No tienes Python instalado en tu sistema operativo, preciona el boton debajo para instalarlo y poder seguir con la instalación. ")
             self.python_label.grid(
-                row=0, column=0, padx=(25, 0), pady=(13, 150))
+                    row=0, column=0, padx=(0, 20), pady=(13, 150))
 
             self.python_button = tk.Button(
-                self.python_frame, text="Instalar Python", command=instalar_python)
+                    self.python_frame, text="Instalar Python", command=instalar_python)
             self.python_button.grid(
-                row=0, column=0, padx=(70, 0), pady=(0, 50))
+                    row=0, column=0, padx=(0, 0), pady=(0, 50))
 
             self.continuar_button = tk.Button(
-                self.python_frame, text="Continuar",width=10,command=self.ubicacion)
+                    self.python_frame, text="Continuar",width=10,command=self.ubicacion)
             self.continuar_button.grid(
-                row=1, column=0, padx=(450, 0), pady=(147, 0))
+                    row=1, column=0, padx=(380, 0), pady=(75, 0))
 
         else:
             self.ubicacion()
@@ -1522,38 +1615,50 @@ class InstalacionApp:
 
                 if self.count >= 2:
                     self.actualizar_frame.destroy()
+                    self.side_frame.destroy()
                 
                     
+                self.upper_frame = tk.Frame(self.ventana,bg="#d9d9d9", width=600, height=70)
+                self.upper_frame.grid(row=0, column=0)
+
+                self.upper_frame.grid_propagate(False)
+
+                self.title_label = tk.Label(self.upper_frame,bg="#d9d9d9", font=(" Segoe 10 bold"),text="Seleccionar ubicacion")
+                self.title_label.grid(row=0, column=0, padx=(0,230), pady=(10,0))
+
+                self.title_message = tk.Message(self.upper_frame,bg="#d9d9d9",width=500,text="A continuación selecciona donde se va a instalar el gestor de contraseñas")
+                self.title_message.grid(row=1, column=0, padx=(20,0), pady=(5,0))
 
                 self.ubicacion_frame = tk.Frame(
-                    self.ventana, width=600, height=600, )
-                self.ubicacion_frame.grid(pady=(0,0))
+                    self.ventana, width=600, height=600,bg="#f0f0f0" )
+                self.ubicacion_frame.grid(row=1)
 
                 
                 self.ubicacion_label = tk.Message(
                     self.ubicacion_frame, width=500,text="La ubicacion predeterminada es en archivos del programa, si decides cambiar la ubicacion recuerda que podria afectar el funcionamiento de algunas caracteristicas de la aplicacion." )
                 self.ubicacion_label.grid(
-                    row=0, column=0, padx=(25, 0), pady=(13, 150))
+                    row=0, column=0, padx=(0, 40), pady=(13, 150))
 
                 self.ubicacion_entry = tk.Entry(
                     self.ubicacion_frame, width=50)
                 self.ubicacion_entry.grid(
-                    row=0, column=0, padx=(0, 145), pady=(0, 50))
+                    row=0, column=0, padx=(0, 205), pady=(0, 50))
 
                 self.ubicacion_entry.insert(0, self.ubicacion_seleccionada)
 
                 self.ubicacion_button = tk.Button(
                     self.ubicacion_frame, text="Seleccionar ubicacion",command=self.seleccionar_ubicacion)
                 self.ubicacion_button.grid(
-                    row=0, column=0, padx=(404, 0), pady=(0, 50))
+                    row=0, column=0, padx=(334, 0), pady=(0, 50))
 
                 self.ubicacion_cont_button = tk.Button(
                     self.ubicacion_frame, text="Continuar",width=10,command=self.actualizar)
                 self.ubicacion_cont_button.grid(
-                    row=1, column=0, padx=(450, 0), pady=(147, 0))
+                    row=1, column=0, padx=(380, 0), pady=(75, 0))
 
             except:
                 self.introduccion_frame.destroy()
+                self.side_frame.destroy()
 
                 self.count = self.count + 1 
 
@@ -1561,33 +1666,43 @@ class InstalacionApp:
                     self.actualizar_frame.destroy()
                 
                     
+                self.upper_frame = tk.Frame(self.ventana,bg="#d9d9d9", width=600, height=70)
+                self.upper_frame.grid(row=0, column=0)
+
+                self.upper_frame.grid_propagate(False)
+
+                self.title_label = tk.Label(self.upper_frame,bg="#d9d9d9", font=(" Segoe 10 bold"),text="Seleccionar ubicacion")
+                self.title_label.grid(row=0, column=0, padx=(0,230), pady=(10,0))
+
+                self.title_message = tk.Message(self.upper_frame,bg="#d9d9d9",width=500,text="A continuación selecciona donde se va a instalar el gestor de contraseñas")
+                self.title_message.grid(row=1, column=0, padx=(20,0), pady=(5,0))
 
                 self.ubicacion_frame = tk.Frame(
-                    self.ventana, width=600, height=600, )
-                self.ubicacion_frame.grid(pady=(0,0))
+                    self.ventana, width=600, height=600,bg="#f0f0f0" )
+                self.ubicacion_frame.grid(row=1)
 
                 
                 self.ubicacion_label = tk.Message(
                     self.ubicacion_frame, width=500,text="La ubicacion predeterminada es en archivos del programa, si decides cambiar la ubicacion recuerda que podria afectar el funcionamiento de algunas caracteristicas de la aplicacion." )
                 self.ubicacion_label.grid(
-                    row=0, column=0, padx=(25, 0), pady=(13, 150))
+                    row=0, column=0, padx=(0, 40), pady=(13, 150))
 
                 self.ubicacion_entry = tk.Entry(
                     self.ubicacion_frame, width=50)
                 self.ubicacion_entry.grid(
-                    row=0, column=0, padx=(0, 145), pady=(0, 50))
+                    row=0, column=0, padx=(0, 205), pady=(0, 50))
 
                 self.ubicacion_entry.insert(0, self.ubicacion_seleccionada)
 
                 self.ubicacion_button = tk.Button(
                     self.ubicacion_frame, text="Seleccionar ubicacion",command=self.seleccionar_ubicacion)
                 self.ubicacion_button.grid(
-                    row=0, column=0, padx=(404, 0), pady=(0, 50))
+                    row=0, column=0, padx=(334, 0), pady=(0, 50))
 
                 self.ubicacion_cont_button = tk.Button(
                     self.ubicacion_frame, text="Continuar",width=10,command=self.actualizar)
                 self.ubicacion_cont_button.grid(
-                    row=1, column=0, padx=(450, 0), pady=(147, 0))
+                    row=1, column=0, padx=(380, 0), pady=(75, 0))
         else:
             messagebox.showwarning("Requisito necesario","Es necesario que instales python para seguir con la instalación.")
 
@@ -1610,6 +1725,11 @@ class InstalacionApp:
             if self.count1 >= 2:
                 self.instalar_frame.destroy()
 
+        self.title_label.configure(text="Ubicacion registro ")
+        self.title_label.grid(row=0, column=0, padx=(0,150), pady=(10,0))
+        self.title_message.configure(text="Selecciona la ubicacion del registro de tus contraseñas")
+        self.title_message.grid(row=1, column=0, padx=(20,0), pady=(5,0))
+
 
         self.actualizar_frame = tk.Frame(
             self.ventana, width=600, height=600)
@@ -1618,12 +1738,12 @@ class InstalacionApp:
         self.actualizar_label = tk.Message(
             self.actualizar_frame, width=500,text="Si anteriormente instalaste la aplicacion en otra ubicacion seleccionala a continuacion.\nSino preciona continuar.")
         self.actualizar_label.grid(
-            row=0, column=0, padx=(4, 0), pady=(13, 150))
+            row=0, column=0, padx=(0, 60), pady=(13, 150))
 
         self.actualizar_entry = tk.Entry(
             self.actualizar_frame, width=50)
         self.actualizar_entry.grid(
-            row=0, column=0, padx=(0, 145), pady=(0, 50))
+            row=0, column=0, padx=(0, 205), pady=(0, 50))
 
         self.actualizar_entry.insert(
             0, self.ubicacion_database)
@@ -1631,17 +1751,17 @@ class InstalacionApp:
         self.continuar_button = tk.Button(
             self.actualizar_frame, text="Seleccionar ubicacion",command=self.seleccionar_ubicacion_db)
         self.continuar_button.grid(
-            row=0, column=0, padx=(404, 0), pady=(0, 50))
+            row=0, column=0, padx=(334, 0), pady=(0, 50))
 
         self.continuar_button_cont_button = tk.Button(
             self.actualizar_frame, text="Continuar", width=10,command=self.encriptacion)
         self.continuar_button_cont_button.grid(
-            row=1, column=0, padx=(450, 0), pady=(147, 0))
+            row=1, column=0, padx=(380, 0), pady=(75, 0))
 
         self.regresar_button = tk.Button(
             self.actualizar_frame, text="Regresar",width=10 ,command=self.ubicacion)
         self.regresar_button.grid(
-            row=1, column=0, padx=(0, 310), pady=(147, 0))
+            row=1, column=0, padx=(0, 380), pady=(75, 0))
 
     def check_version(self):
         version = self.ubicacion_seleccionada + '/Administrador de contraseñas/version/version.txt'
@@ -1673,37 +1793,43 @@ class InstalacionApp:
                 self.instalar_frame.destroy()
 
 
+            self.title_label.configure(text="Metodo de cifrado")
+            self.title_label.grid(row=0, column=0, padx=(0,310), pady=(10,0))
+            self.title_message.configure(text="Selecciona que metodo de cifrado quieres que se utilice para guardar tus contraseñas")
+            self.title_message.grid(row=1, column=0, padx=(20,0), pady=(5,0))
+
+
             self.encriptacion_frame = tk.Frame(
                 self.ventana, width=600, height=600)
             self.encriptacion_frame.grid()
 
             self.encriptacion_label = tk.Message(
-                self.encriptacion_frame, width=600,text="La nueva version del administrador de contraseñas ofrece un nuevo y mas seguro metodo de cifrado,\nlo que mantiene tus contraseñas mas seguras.\nEs recomendable actualizar a este nuevo metodo de cifrado, pero si lo deseas puedes seguir usando \nel metodo antigüo.")
+                self.encriptacion_frame, width=600,text="Es recomendable actualizar al nuevo metodo de cifrado, pero si lo deseas puedes seguir usando el\nmetodo antigüo.")
             self.encriptacion_label.grid(
-                row=0, column=0, padx=(33, 0), pady=(0, 174))
+                row=0, column=0, padx=(0, 0), pady=(0, 120))
 
 
             self.new_encryption =tk.Radiobutton(self.encriptacion_frame,variable= self.radio_var,value=1 ,text="Nuevo metodo de cifrado (recomendado)")
-            self.new_encryption.grid(row=0, column=0, padx=(0, 250), pady=(0, 10))
+            self.new_encryption.grid(row=0, column=0, padx=(0, 250), pady=(0, 30))
 
             self.new_encryption_desc = tk.Message(self.encriptacion_frame,  width=500, text="El nuevo metodo usa cifrado asimetrico para incrementar la\nseguridad a la hora de guardar y acceder a tus contraseñas.")
-            self.new_encryption_desc.grid(row=0, column=0, padx=(0, 105), pady=(60, 0))
+            self.new_encryption_desc.grid(row=0, column=0, padx=(0, 105), pady=(20, 0))
 
             self.old_encryption = tk.Radiobutton(self.encriptacion_frame,variable= self.radio_var,value=2 ,text="Antigüo metodo de cifrado")
-            self.old_encryption.grid(row=0, column=0, padx=(0, 330), pady=(150, 0))
+            self.old_encryption.grid(row=0, column=0, padx=(0, 330), pady=(100, 0))
 
             self.old_encryption_desc = tk.Message(self.encriptacion_frame,  width=500, text="El viejo metodo usa cifrado simetrico lo que limita la \nseguridad a la hora de guardar y acceder a tus contraseñas.")
-            self.old_encryption_desc.grid(row=0, column=0, padx=(0, 108), pady=(230, 0))
+            self.old_encryption_desc.grid(row=0, column=0, padx=(0, 108), pady=(150, 0))
 
             self.continuar_encriptacion_button = tk.Button(
                 self.encriptacion_frame, text="Continuar",width=10,command=self.instalacion)
             self.continuar_encriptacion_button.grid(
-                row=1, column=0, padx=(401, 0), pady=(80, 0))
+                row=1, column=0, padx=(381, 0), pady=(90, 0))
 
             self.regresar_encriptacion_button = tk.Button(
                 self.encriptacion_frame, text="Regresar",width=10,command=self.actualizar)
             self.regresar_encriptacion_button.grid(
-                row=1, column=0, padx=(0, 359), pady=(80, 0))
+                row=1, column=0, padx=(0, 381), pady=(90, 0))
         else:
             self.instalacion()
 
@@ -1718,6 +1844,11 @@ class InstalacionApp:
 
                 self.count2 = self.count2 + 1
 
+                self.title_label.configure(text="Instalar")
+                self.title_label.grid(row=0, column=0, padx=(0,150), pady=(10,0))
+                self.title_message.configure(text="A continuación comenzará la instalación")
+                self.title_message.grid(row=1, column=0, padx=(20,0), pady=(5,0))
+
 
                 self.instalar_frame = tk.Frame(
                     self.ventana, width=600, height=600)
@@ -1726,7 +1857,7 @@ class InstalacionApp:
                 self.instalar_label = tk.Message(
                     self.instalar_frame,width=500, text="Presiona instalar para comenzar con la instalacion.")
                 self.instalar_label.grid(
-                    row=0, column=0, padx=(0, 190), pady=(6, 90))
+                    row=0, column=0, padx=(0, 250), pady=(15, 0))
 
 
                 self.instalar_progreso = ttk.Progressbar (
@@ -1734,17 +1865,16 @@ class InstalacionApp:
 
                 self.progreso_label = tk.Message(
                     self.instalar_frame, width=100)
-                self.progreso_label.grid(
-                    row=0, column=0, padx=(0, 390), pady=(40, 0))
+                
 
                 self.boton_instalar = tk.Button(
                     self.instalar_frame, text="Instalar", width=10,command=self.instalar)
-                self.boton_instalar.grid(row=1, column=0, padx=(450, 0), pady=(230, 0))
+                self.boton_instalar.grid(row=1, column=0, padx=(380, 0), pady=(240, 0))
 
                 self.regresar_1_button = tk.Button(
                     self.instalar_frame, text="Regresar", width=10,command= self.encriptacion)
                 self.regresar_1_button.grid(
-                    row=1, column=0, padx=(0,310), pady=(230, 0))
+                    row=1, column=0, padx=(0,380), pady=(240, 0))
 
         except AttributeError:
             print("Accediendo con version ")
@@ -1761,6 +1891,12 @@ class InstalacionApp:
                 if self.count1 >= 2:
                     self.count2 = 1
 
+            self.title_label.configure(text="Instalar")
+            self.title_label.grid(row=0, column=0, padx=(0,150), pady=(10,0))
+            self.title_message.configure(text="A continuación comenzará la instalación")
+            self.title_message.grid(row=1, column=0, padx=(20,0), pady=(5,0))
+
+
             self.instalar_frame = tk.Frame(
                     self.ventana, width=600, height=600)
             self.instalar_frame.grid()
@@ -1768,7 +1904,7 @@ class InstalacionApp:
             self.instalar_label = tk.Message(
                     self.instalar_frame,width=500, text="Presiona instalar para comenzar con la instalacion.")
             self.instalar_label.grid(
-                    row=0, column=0, padx=(0, 190), pady=(6, 90))
+                    row=0, column=0, padx=(0, 250), pady=(15, 0))
 
 
             self.instalar_progreso = ttk.Progressbar (
@@ -1776,39 +1912,73 @@ class InstalacionApp:
 
             self.progreso_label = tk.Message(
                     self.instalar_frame, width=100)
-            self.progreso_label.grid(
-                    row=0, column=0, padx=(0, 390), pady=(40, 0))
+                
 
             self.boton_instalar = tk.Button(
                     self.instalar_frame, text="Instalar", width=10,command=self.instalar)
-            self.boton_instalar.grid(row=1, column=0, padx=(450, 0), pady=(230, 0))
+            self.boton_instalar.grid(row=1, column=0, padx=(380, 0), pady=(240, 0))
 
             self.regresar_1_button = tk.Button(
                     self.instalar_frame, text="Regresar", width=10,command= self.encriptacion)
             self.regresar_1_button.grid(
-                    row=1, column=0, padx=(0,310), pady=(230, 0))
+                    row=1, column=0, padx=(0,380), pady=(240, 0))
 
     def exito(self):
+        self.check_var_dsk = tk.IntVar()
+        self.check_var_ex = tk.IntVar()
+        
         self.instalar_frame.destroy()
 
         self.exito_frame = tk.Frame(self.ventana, width=600, height=600)
-        self.exito_frame.grid()
+        self.exito_frame.grid(column=1, row=0)
+        self.exito_frame.grid_propagate(False)
+
+        self.side_frame = tk.Frame(self.ventana, width=130, height=600)
+        self.side_frame.grid(column=0, row=0)
+        self.side_frame.grid_propagate(False)
+
+        canvas = tk.Canvas(self.side_frame,width=130,bg="green" ,height=600)
+        canvas.grid()
+
+        imagen = Image.open(self.image)
+        ancho = 130
+        alto = 600
+        imagen =  imagen.resize((ancho, alto), Image.LANCZOS)
+
+        imagen_tk = ImageTk.PhotoImage(imagen)
+        canvas.image = imagen_tk
+
+        x = (130 - ancho) // 2
+        y = (600 - alto) // 2
+
+        
+        canvas.create_image(x, y, anchor="nw", image=imagen_tk)
+        text = "Created by"
+        x = 50  # x-coordinate of text position
+        y = 335  # y-coordinate of text position
+        canvas.create_text(x, y, text=text, fill="White",font=(" Segoe 10"))
+
+        text = "Edgar Arroyo"
+        x = 58  # x-coordinate of text position
+        y = 350  # y-coordinate of text position
+        canvas.create_text(x, y, text=text, fill="White",font=(" Segoe 10"))
+
 
         self.exito_label = tk.Message(
             self.exito_frame, width=600,text="Instalacion completada con exito." )
         self.exito_label.grid(
-            row=0, column=0, padx=(181, 0), pady=(0, 50))
+            row=0, column=0, padx=(0, 0), pady=(0, 320))
 
         self.shortcut_dsk = tk.Checkbutton(self.exito_frame, text="Agregar atajo al escritorio", variable=self.check_var_dsk)
-        self.shortcut_dsk.grid(row=0, column=0, padx=(180, 0), pady=(40, 0))
+        self.shortcut_dsk.grid(row=0, column=0, padx=(0, 0), pady=(0, 200))
 
         self.execute = tk.Checkbutton(self.exito_frame, text="Abrir aplicacion al finalizar", variable=self.check_var_ex)
-        self.execute.grid(row=0, column=0, padx=(180, 0), pady=(120, 0))
+        self.execute.grid(row=0, column=0, padx=(0, 0), pady=(0, 100))
 
         self.close_button = tk.Button(
             self.exito_frame, text="Terminar",width=10,command= self.terminar)
         self.close_button.grid(
-            row=1, column=0, padx=(450, 0), pady=(203, 0))
+            row=0, column=0, padx=(320, 0), pady=(350, 0))
 
     def variable_entorno(self):
 
