@@ -1,8 +1,12 @@
 virtual
 image
+database/
 .vscode
 .env
 __pycache__
 keys.json
-database
-.ico
+icono.ico
+code_image.jpg
+installer-icon.ico
+app-icon.ico
+build/
