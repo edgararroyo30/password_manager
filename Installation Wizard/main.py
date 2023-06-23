@@ -1165,7 +1165,7 @@ def ejecutar_pyinstaller(ruta_archivo,ruta_spec):
 
     ctk_path = location_linea.strip()
 
-    run = f"""pyinstaller --noconfirm --onedir --icon=app-icon.ico --windowed --add-data "{ctk_path}/customtkinter;customtkinter/"  {nombre_archivo}""" 
+    run = f"""pyinstaller --onedir --icon=app-icon.ico --windowed --add-data "{ctk_path}/customtkinter;customtkinter/"  {nombre_archivo}""" 
     subprocess.run(run, shell=True)
 
 def python_exists():
@@ -1272,10 +1272,7 @@ class InstalacionApp:
         self.crear_archivos_keys()
         self.crear_archivos_app()
     
-        hilo = threading.Thread(target=self.metodo_pyinstaller)
-        hilo.start()
-        hilo.join()
-
+        self.metodo_pyinstaller()
         self.mover_archivos()
         self.eliminar_archivos()
         self.proceso_db()
@@ -1285,7 +1282,6 @@ class InstalacionApp:
         self.exito()
 
     def metodo_pyinstaller(self):
-        self.proceso.configure(text="Compilando aplicacion")
         time.sleep(1)
         archivo_python = os.path.join(self.ubicacion_seleccionada, 'Administrador de contraseñas/app/admin_contrasenas.py')
         archivo_spec = 'admin_contrasenas.spec'
@@ -1473,9 +1469,9 @@ class InstalacionApp:
                 
 
 
-        
-        self.progreso_actual.set(40)  
-        self.ventana.update()
+        with bloqueo:
+            self.progreso_actual.set(40)  
+            self.ventana.update()
                 
     def write_version(self):
         self.proceso.configure(text="Escribiendo version actual")
