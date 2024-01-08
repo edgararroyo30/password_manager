@@ -1,3 +1,7 @@
+"""
+Contains all db methods to write, visualise, update and eliminate data
+"""
+
 from tkinter import messagebox
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -6,6 +10,10 @@ from .conexion_db import ConexionDB, ConexionCodigo
 from model.key import public_table_key, private_db_key
 
 def crear_tabla():
+    """
+    Creates the table that contains the users data.
+    Includes id_user, site, username and password
+    """
     conexion = ConexionDB()
 
     sql = '''

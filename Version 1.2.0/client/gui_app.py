@@ -1,9 +1,7 @@
 import tkinter as tk
 import customtkinter as ctk
 from tkinter import ttk, messagebox
-
 import secrets
-
 import pyperclip
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -98,7 +96,7 @@ class Frame(ttk.Frame):
         ventana = tk.Toplevel(self)
         ventana.config(background=self.style.lookup('TFrame', 'background'))
         ventana.title('Agregar Usuario')
-        ventana.iconbitmap('image/icono_candado.ico')
+        ventana.iconbitmap('image/app-icon.ico')
         style = ThemedStyle(ventana)
 
         ventana.geometry("310x250")
@@ -222,7 +220,7 @@ class Frame(ttk.Frame):
         self.ventana.config(
             background=self.style.lookup('TFrame', 'background'))
         self.ventana.title('Editar Usuario')
-        self.ventana.iconbitmap('image/icono_candado.ico')
+        self.ventana.iconbitmap('image/app-icon.ico')
         self.style = ThemedStyle(self.ventana)
 
         self.ventana.geometry("310x250")
@@ -434,11 +432,13 @@ class Frame(ttk.Frame):
             messagebox.showerror(titulo, mensaje)
 
     def input_code(self):
+        
+
         self.root.withdraw()
         ventana = ctk.CTkToplevel(self.root)
         ventana.config(background=self.style.lookup('TFrame', 'background'))
         ventana.title('Acceder')
-        ventana.iconbitmap('image/icono_candado.ico')
+        ventana.iconbitmap('image/app-icon.ico')
         style = ThemedStyle(ventana)
         ventana.geometry("310x100")
 
@@ -482,7 +482,7 @@ class Frame(ttk.Frame):
                 mensaje = 'El codgio ingresado es incorrecto'
                 messagebox.showerror(
                     title, mensaje)
-
+        
         boton_guardar = ttk.Button(
             ventana, text='Acceder', command=guardar_datos)
 
@@ -499,7 +499,7 @@ class Frame(ttk.Frame):
         ventana = ctk.CTkToplevel(self.root)
         ventana.config(background=self.style.lookup('TFrame', 'background'))
         ventana.title('Acceder')
-        ventana.iconbitmap('image/icono_candado.ico')
+        ventana.iconbitmap('image/app-icon.ico')
         style = ThemedStyle(ventana)
         ventana.geometry("310x160")
 

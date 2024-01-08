@@ -20,6 +20,7 @@ import win32com.client
 import webbrowser
 import sys
 import base64
+import ctypes
 
 main_text=""" 
 import customtkinter as ctk
@@ -461,7 +462,7 @@ class Frame(ttk.Frame):
         ventana = tk.Toplevel(self)
         ventana.config(background=self.style.lookup('TFrame', 'background'))
         ventana.title('Agregar Usuario')
-        ventana.iconbitmap('image/icono_candado.ico')
+        ventana.iconbitmap('image/app-icon.ico')
         style = ThemedStyle(ventana)
 
         ventana.geometry("310x250")
@@ -583,7 +584,7 @@ class Frame(ttk.Frame):
         self.ventana.config(
             background=self.style.lookup('TFrame', 'background'))
         self.ventana.title('Editar Usuario')
-        self.ventana.iconbitmap('image/icono_candado.ico')
+        self.ventana.iconbitmap('image/app-icon.ico')
         self.style = ThemedStyle(self.ventana)
 
         self.ventana.geometry("310x250")
@@ -797,7 +798,7 @@ class Frame(ttk.Frame):
         ventana = ctk.CTkToplevel(self.root)
         ventana.config(background=self.style.lookup('TFrame', 'background'))
         ventana.title('Acceder')
-        ventana.iconbitmap('image/icono_candado.ico')
+        ventana.iconbitmap('image/app-icon.ico')
         style = ThemedStyle(ventana)
         ventana.geometry("310x100")
 
@@ -858,7 +859,7 @@ class Frame(ttk.Frame):
         ventana = ctk.CTkToplevel(self.root)
         ventana.config(background=self.style.lookup('TFrame', 'background'))
         ventana.title('Acceder')
-        ventana.iconbitmap('image/icono_candado.ico')
+        ventana.iconbitmap('image/app-icon.ico')
         style = ThemedStyle(ventana)
         ventana.geometry("310x160")
 
@@ -952,6 +953,61 @@ class Frame(ttk.Frame):
                 tree.selection_add(item)
                 tree.item(item, tags=("searched_row",))
 """
+
+spec_content = """
+# -*- mode: python ; coding: utf-8 -*-
+
+
+block_cipher = None
+
+
+a = Analysis(
+    ['admin_contrasenas.py'],
+    pathex=[],
+    binaries=[],
+    datas=[('/customtkinter;customtkinter/','customtkinter'), ('/cryptography;cryptography/','cryptography'), ('/bcrypt;bcrypt/','bcrypt'), ('/pyperclip;pyperclip/','pyperclip'), ('/ttkthemes;ttkthemes/','ttkthemes')],
+    hiddenimports=[],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,
+    name='admin_contrasenas',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon = ['app-icon.ico'],
+)
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='admin_contrasenas',
+)
+"""
+
 
 
 app_icon = """
@@ -1135,11 +1191,11 @@ def ejecutar_pyinstaller(ruta_archivo,ruta_spec):
     os.chdir(ruta_directorio)
     nombre_archivo = os.path.basename(ruta_archivo)
 
-    env = 'python -m venv virtual'
-    subprocess.run(env, shell=True)
+    # env = 'python -m venv virtual'
+    # subprocess.run(env, shell=True)
 
-    open_env = 'virtual/Scripts/activate'
-    subprocess.run(open_env, shell=True)
+    # open_env = 'virtual/Scripts/activate'
+    # subprocess.run(open_env, shell=True)
 
 
     install = 'pip install pyinstaller'
@@ -1148,24 +1204,86 @@ def ejecutar_pyinstaller(ruta_archivo,ruta_spec):
     customtk = 'pip install  customtkinter'
     subprocess.run(customtk,shell=True)
 
-    locationctk =  subprocess.run('pip show customtkinter', capture_output=True, text=True)
+    cryptography  = 'pip install  cryptography '
+    subprocess.run(cryptography ,shell=True)
 
-    salida = locationctk.stdout
+    bcrypt  = 'pip install bcrypt'
+    subprocess.run(bcrypt ,shell=True)
 
-    lineas = salida.splitlines()
+    pyperclip  = 'pip install pyperclip'
+    subprocess.run(pyperclip ,shell=True)
 
-    location_linea = None
-    for linea in lineas:
-        if linea.startswith("Location"):
-            location_linea = linea
-            break
+    ttkthemes  = 'pip install ttkthemes'
+    subprocess.run(ttkthemes ,shell=True)
 
-    if location_linea:
-        location_linea = location_linea.replace("Location: ", "")
 
-    ctk_path = location_linea.strip()
+    def create_spec():
 
-    run = f"""pyinstaller --onedir --icon=app-icon.ico --windowed --add-data "{ctk_path}/customtkinter;customtkinter/"  {nombre_archivo}""" 
+        global spec_content
+
+        locationctk =  subprocess.run('pip show customtkinter', capture_output=True, text=True)
+
+        salida = locationctk.stdout
+
+        lineas = salida.splitlines()
+
+        location_linea = None
+        for linea in lineas:
+            if linea.startswith("Location"):
+                location_linea = linea
+                break
+
+        if location_linea:
+            location_linea = location_linea.replace("Location: ", "")
+
+        ctk_path = location_linea.strip()
+
+        ctk_path = ctk_path.replace("\\", "/")
+        spec_lines = spec_content.splitlines()
+
+        spec_lines[11] = f"    datas=[('{ctk_path}/customtkinter','customtkinter')],"
+
+        spec_content = '\n'.join(spec_lines)
+
+        main = ruta_directorio + '/admin_contrasenas.spec'
+
+        with open(main, "w") as file:
+                    
+            file.write(spec_content)
+
+    def dirs_to_pathex():
+
+        global spec_content
+
+        client = ruta_directorio + '/client'
+        client = client.replace("\\", "/")
+
+        model = ruta_directorio + '/model'
+        model = model.replace("\\", "/")
+
+        dirs = f"'{client}', '{model}'"
+
+        pathex_lines = spec_content.splitlines()
+
+        pathex_lines[9] = f"    pathex=[{dirs}],"
+
+        spec_content = '\n'.join(pathex_lines)
+
+        pathex_lines[12] = f"    hiddenimports=[{dirs}],"
+
+        spec_content = '\n'.join(pathex_lines)
+
+        main = ruta_directorio + '/admin_contrasenas.spec'
+
+        with open(main, "w") as file:
+                    
+            file.write(spec_content)
+
+    create_spec()
+    dirs_to_pathex()
+
+
+    run = f"""pyinstaller admin_contrasenas.spec""" 
     subprocess.run(run, shell=True)
 
 def python_exists():
@@ -1181,6 +1299,12 @@ def python_exists():
 def instalar_python():
     webbrowser.open("https://www.python.org/downloads/")
 
+def is_admin():
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
+
 class InstalacionApp:
     def __init__(self, ventana):
         self.ventana = ventana
@@ -1192,8 +1316,11 @@ class InstalacionApp:
 
         self.ventana.resizable(0, 0)
 
+        self.style = ThemedStyle(self.ventana)
+        # self.style.set_theme("breeze")
+
         self.ubicacion_seleccionada = 'C:/Program Files'
-        self.ubicacion_database = 'C:/Program Files/Administrador de contraseñas'
+        self.ubicacion_database = 'C:/Program Files/Administrador de contrasenas'
         self.count = 0
         self.count1 = 0
         self.count2 = 0
@@ -1213,17 +1340,17 @@ class InstalacionApp:
             self.ubicacion_seleccionada = 'C:/Program Files'
             self.ubicacion_entry.delete(0, 100)
             self.ubicacion_entry.insert(0, self.ubicacion_seleccionada)
-            self.ubicacion_database = self.ubicacion_seleccionada + '/Administrador de contraseñas/database'
+            self.ubicacion_database = self.ubicacion_seleccionada + '/Administrador de contrasenas/database'
 
         else:
             self.ubicacion_entry.delete(0, 100)
             self.ubicacion_entry.insert(0, self.ubicacion_seleccionada)
-            self.ubicacion_database = self.ubicacion_seleccionada + '/Administrador de contraseñas/database'
+            self.ubicacion_database = self.ubicacion_seleccionada + '/Administrador de contrasenas/database'
 
     def seleccionar_ubicacion_db(self):
         self.ubicacion_database = filedialog.askdirectory()
         if self.ubicacion_database == "":
-            self.ubicacion_database = self.ubicacion_seleccionada + '/Administrador de contraseñas/database'
+            self.ubicacion_database = self.ubicacion_seleccionada + '/Administrador de contrasenas/database'
             self.actualizar_entry.delete(0, 100)
             self.actualizar_entry.insert(0, self.ubicacion_database)
 
@@ -1263,6 +1390,7 @@ class InstalacionApp:
             self.ventana.update()
 
     def instalar(self):
+
         
         self.progreso_actual.set(0)
 
@@ -1271,19 +1399,25 @@ class InstalacionApp:
         self.copiar_archivos()
         self.crear_archivos_keys()
         self.crear_archivos_app()
-    
+
+        
+
         self.metodo_pyinstaller()
+        
         self.mover_archivos()
+        time.sleep(10)
         self.eliminar_archivos()
         self.proceso_db()
         self.write_version()
+       
 
 
         self.exito()
 
     def metodo_pyinstaller(self):
+        
         time.sleep(1)
-        archivo_python = os.path.join(self.ubicacion_seleccionada, 'Administrador de contraseñas/app/admin_contrasenas.py')
+        archivo_python = os.path.join(self.ubicacion_seleccionada, 'Administrador de contrasenas/app/admin_contrasenas.py')
         archivo_spec = 'admin_contrasenas.spec'
         ejecutar_pyinstaller(archivo_python, archivo_spec)
         with bloqueo:
@@ -1295,7 +1429,7 @@ class InstalacionApp:
         time.sleep(1)
         if self.check_version() is False:
             if self.radio_var.get() == 1:
-                if self.ubicacion_database != self.ubicacion_seleccionada + '/Administrador de contraseñas/database':
+                if self.ubicacion_database != self.ubicacion_seleccionada + '/Administrador de contrasenas/database':
                     store_passwords(self.ubicacion_database + '/datos_usuarios.db')
 
         with bloqueo:
@@ -1305,8 +1439,8 @@ class InstalacionApp:
     def mover_archivos(self):
         self.proceso.configure(text="Moviendo archivos")
         time.sleep(1)
-        source_dir = os.path.join(self.ubicacion_seleccionada, 'Administrador de contraseñas/app/dist/admin_contrasenas')
-        destination_dir = os.path.join(self.ubicacion_seleccionada, 'Administrador de contraseñas')
+        source_dir = os.path.join(self.ubicacion_seleccionada, 'Administrador de contrasenas/app/dist/admin_contrasenas')
+        destination_dir = os.path.join(self.ubicacion_seleccionada, 'Administrador de contrasenas')
 
         contents = os.listdir(source_dir)
 
@@ -1322,8 +1456,15 @@ class InstalacionApp:
     def eliminar_archivos(self):
         self.proceso.configure(text="Eliminando archivos temporales")
         time.sleep(1)
-        directory_path = os.path.join(self.ubicacion_seleccionada, 'Administrador de contraseñas/app')
-        shutil.rmtree(directory_path)
+
+        try:
+
+            directory_path = os.path.join(self.ubicacion_seleccionada, 'Administrador de contrasenas/app')
+            shutil.rmtree(directory_path)
+            os.rmdir(directory_path)
+
+        except PermissionError:
+            print("[WinError 32] El proceso no tiene acceso al archivo porque está siendo utilizado por otro proceso")
 
         with bloqueo:
             self.progreso_actual.set(80)  
@@ -1334,7 +1475,7 @@ class InstalacionApp:
         time.sleep(1)  
 
         ruta_principal = os.path.join(
-            self.ubicacion_seleccionada, "Administrador de contraseñas")
+            self.ubicacion_seleccionada, "Administrador de contrasenas")
         os.makedirs(ruta_principal, exist_ok=True)
 
         ruta_basedatos = os.path.join(ruta_principal, "database")
@@ -1360,18 +1501,18 @@ class InstalacionApp:
         def create_icon():
             icon_data = base64.b64decode(app_icon)
 
-            ruta = self.ubicacion_seleccionada + '/Administrador de contraseñas/image/app-icon.ico'
+            ruta = self.ubicacion_seleccionada + '/Administrador de contrasenas/image/app-icon.ico'
 
             with open(ruta, 'wb') as f:
                 f.write(icon_data)
 
         create_icon()
-        ubicacion = Path(self.ubicacion_seleccionada + '/Administrador de contraseñas/database/codigo_acceso.db')
+        ubicacion = Path(self.ubicacion_seleccionada + '/Administrador de contrasenas/database/codigo_acceso.db')
         try:
-            if self.ubicacion_database != self.ubicacion_seleccionada + '/Administrador de contraseñas/database':
+            if self.ubicacion_database != self.ubicacion_seleccionada + '/Administrador de contrasenas/database':
                 
                 archivo_basedatos = self.ubicacion_database
-                ubicacion_db = self.ubicacion_seleccionada + '/Administrador de contraseñas/database' 
+                ubicacion_db = self.ubicacion_seleccionada + '/Administrador de contrasenas/database' 
             
                 for file in os.listdir(self.ubicacion_database):
                     shutil.copy2(os.path.join(self.ubicacion_database, file), ubicacion_db)
@@ -1380,10 +1521,10 @@ class InstalacionApp:
                 print("Los archivos ya existen")
 
             else:
-                db_codigo = open(self.ubicacion_seleccionada + '/Administrador de contraseñas/database/codigo_acceso.db', 'w')
+                db_codigo = open(self.ubicacion_seleccionada + '/Administrador de contrasenas/database/codigo_acceso.db', 'w')
                 db_codigo.close()
 
-                db_usuarios = open(self.ubicacion_seleccionada + '/Administrador de contraseñas/database/datos_usuarios.db', 'w')
+                db_usuarios = open(self.ubicacion_seleccionada + '/Administrador de contrasenas/database/datos_usuarios.db', 'w')
                 db_usuarios.close()
                 
         except SameFileError:
@@ -1420,8 +1561,8 @@ class InstalacionApp:
                 claves[key] = value.replace("-----END PRIVATE KEY-----", "\n-----END PRIVATE KEY-----")
 
         data = json.dumps(claves, separators=(',', ':'), indent=4)
-        Path(self.ubicacion_seleccionada + '/Administrador de contraseñas/backup/keys.json').write_text(data)
-        Path(self.ubicacion_seleccionada + '/Administrador de contraseñas/keys.json').write_text(data)
+        Path(self.ubicacion_seleccionada + '/Administrador de contrasenas/backup/keys.json').write_text(data)
+        Path(self.ubicacion_seleccionada + '/Administrador de contrasenas/keys.json').write_text(data)
 
         with bloqueo:
             self.progreso_actual.set(30)  
@@ -1431,7 +1572,7 @@ class InstalacionApp:
         self.proceso.configure(text="Creando archivos para compilar")
         time.sleep(1)
         ruta_principal = os.path.join(
-            self.ubicacion_seleccionada, "Administrador de contraseñas/app")
+            self.ubicacion_seleccionada, "Administrador de contrasenas/app")
         os.makedirs(ruta_principal, exist_ok=True)
 
         ruta_client = os.path.join(ruta_principal, "client")
@@ -1443,7 +1584,7 @@ class InstalacionApp:
         def create(path,outside_text):
             main = ruta_principal + path
 
-            with open(main, "w") as file:
+            with open(main, "w", encoding="utf-8") as file:
                     
                 file.write(outside_text)
 
@@ -1470,13 +1611,14 @@ class InstalacionApp:
 
 
         with bloqueo:
+            self.proceso.configure(text="Compilando archivos")
             self.progreso_actual.set(40)  
             self.ventana.update()
                 
     def write_version(self):
         self.proceso.configure(text="Escribiendo version actual")
         time.sleep(1)
-        version = self.ubicacion_seleccionada + '/Administrador de contraseñas/version/version.txt'
+        version = self.ubicacion_seleccionada + '/Administrador de contrasenas/version/version.txt'
         archivo = Path(version)
 
         with open(version, "w") as file:
@@ -1512,6 +1654,12 @@ class InstalacionApp:
         acceso_directo.Save()
 
     def introduccion(self):
+
+        def onclick(event=None):
+            print("You clicked the button or pressed Enter")
+            self.install_python()
+
+        self.ventana.bind('<Return>', onclick)
         
         
         self.introduccion_frame = tk.Frame(
@@ -1555,12 +1703,18 @@ class InstalacionApp:
         self.introduccion_label.grid(
             row=0, column=0, padx=(100, 0), pady=(0, 505))
 
-        self.introduccion_button = tk.Button(
+        self.introduccion_button = ttk.Button(
             self.introduccion_frame, text="Continuar",width=10,command=self.install_python)
         self.introduccion_button.grid(
             row=0, column=0, padx=(273, 0), pady=(124, 0))
 
     def install_python(self):
+        def onclick(event=None):
+            print("You clicked the button or pressed Enter")
+            self.ubicacion()
+
+        self.ventana.bind('<Return>', onclick)
+
         if python_exists() is False:
 
             self.introduccion_frame.destroy()
@@ -1587,12 +1741,12 @@ class InstalacionApp:
             self.python_label.grid(
                     row=0, column=0, padx=(0, 20), pady=(13, 150))
 
-            self.python_button = tk.Button(
+            self.python_button = ttk.Button(
                     self.python_frame, text="Instalar Python", command=instalar_python)
             self.python_button.grid(
                     row=0, column=0, padx=(0, 0), pady=(0, 50))
 
-            self.continuar_button = tk.Button(
+            self.continuar_button = ttk.Button(
                     self.python_frame, text="Continuar",width=10,command=self.ubicacion)
             self.continuar_button.grid(
                     row=1, column=0, padx=(380, 0), pady=(75, 0))
@@ -1601,6 +1755,12 @@ class InstalacionApp:
             self.ubicacion()
 
     def ubicacion(self):
+        def onclick(event=None):
+            print("You clicked the button or pressed Enter")
+            self.actualizar()
+
+        self.ventana.bind('<Return>', onclick)
+
         if python_exists() is True:
 
             try:
@@ -1635,19 +1795,19 @@ class InstalacionApp:
                 self.ubicacion_label.grid(
                     row=0, column=0, padx=(0, 40), pady=(13, 150))
 
-                self.ubicacion_entry = tk.Entry(
+                self.ubicacion_entry = ttk.Entry(
                     self.ubicacion_frame, width=50)
                 self.ubicacion_entry.grid(
                     row=0, column=0, padx=(0, 205), pady=(0, 50))
 
                 self.ubicacion_entry.insert(0, self.ubicacion_seleccionada)
 
-                self.ubicacion_button = tk.Button(
+                self.ubicacion_button = ttk.Button(
                     self.ubicacion_frame, text="Seleccionar ubicacion",command=self.seleccionar_ubicacion)
                 self.ubicacion_button.grid(
                     row=0, column=0, padx=(334, 0), pady=(0, 50))
 
-                self.ubicacion_cont_button = tk.Button(
+                self.ubicacion_cont_button = ttk.Button(
                     self.ubicacion_frame, text="Continuar",width=10,command=self.actualizar)
                 self.ubicacion_cont_button.grid(
                     row=1, column=0, padx=(380, 0), pady=(75, 0))
@@ -1683,19 +1843,19 @@ class InstalacionApp:
                 self.ubicacion_label.grid(
                     row=0, column=0, padx=(0, 40), pady=(13, 150))
 
-                self.ubicacion_entry = tk.Entry(
+                self.ubicacion_entry = ttk.Entry(
                     self.ubicacion_frame, width=50)
                 self.ubicacion_entry.grid(
                     row=0, column=0, padx=(0, 205), pady=(0, 50))
 
                 self.ubicacion_entry.insert(0, self.ubicacion_seleccionada)
 
-                self.ubicacion_button = tk.Button(
+                self.ubicacion_button = ttk.Button(
                     self.ubicacion_frame, text="Seleccionar ubicacion",command=self.seleccionar_ubicacion)
                 self.ubicacion_button.grid(
                     row=0, column=0, padx=(334, 0), pady=(0, 50))
 
-                self.ubicacion_cont_button = tk.Button(
+                self.ubicacion_cont_button = ttk.Button(
                     self.ubicacion_frame, text="Continuar",width=10,command=self.actualizar)
                 self.ubicacion_cont_button.grid(
                     row=1, column=0, padx=(380, 0), pady=(75, 0))
@@ -1703,6 +1863,12 @@ class InstalacionApp:
             messagebox.showwarning("Requisito necesario","Es necesario que instales python para seguir con la instalación.")
 
     def actualizar(self):
+        def onclick(event=None):
+            print("You clicked the button or pressed Enter")
+            self.encriptacion()
+
+        self.ventana.bind('<Return>', onclick)
+
         self.ubicacion_frame.destroy()
         self.count = self.count + 1 
 
@@ -1736,7 +1902,7 @@ class InstalacionApp:
         self.actualizar_label.grid(
             row=0, column=0, padx=(0, 60), pady=(13, 150))
 
-        self.actualizar_entry = tk.Entry(
+        self.actualizar_entry = ttk.Entry(
             self.actualizar_frame, width=50)
         self.actualizar_entry.grid(
             row=0, column=0, padx=(0, 205), pady=(0, 50))
@@ -1744,23 +1910,23 @@ class InstalacionApp:
         self.actualizar_entry.insert(
             0, self.ubicacion_database)
 
-        self.continuar_button = tk.Button(
+        self.continuar_button = ttk.Button(
             self.actualizar_frame, text="Seleccionar ubicacion",command=self.seleccionar_ubicacion_db)
         self.continuar_button.grid(
             row=0, column=0, padx=(334, 0), pady=(0, 50))
 
-        self.continuar_button_cont_button = tk.Button(
+        self.continuar_button_cont_button = ttk.Button(
             self.actualizar_frame, text="Continuar", width=10,command=self.encriptacion)
         self.continuar_button_cont_button.grid(
             row=1, column=0, padx=(380, 0), pady=(75, 0))
 
-        self.regresar_button = tk.Button(
+        self.regresar_button = ttk.Button(
             self.actualizar_frame, text="Regresar",width=10 ,command=self.ubicacion)
         self.regresar_button.grid(
             row=1, column=0, padx=(0, 380), pady=(75, 0))
 
     def check_version(self):
-        version = self.ubicacion_seleccionada + '/Administrador de contraseñas/version/version.txt'
+        version = self.ubicacion_seleccionada + '/Administrador de contrasenas/version/version.txt'
         archivo =Path(version)
 
         if archivo.exists():
@@ -1771,6 +1937,13 @@ class InstalacionApp:
         return False
 
     def encriptacion(self):
+        def onclick(event=None):
+            print("You clicked the button or pressed Enter")
+            self.instalacion()
+
+        self.ventana.bind('<Return>', onclick)
+
+
         if self.check_version() is False:
 
             self.actualizar_frame.destroy()
@@ -1805,24 +1978,24 @@ class InstalacionApp:
                 row=0, column=0, padx=(0, 0), pady=(0, 120))
 
 
-            self.new_encryption =tk.Radiobutton(self.encriptacion_frame,variable= self.radio_var,value=1 ,text="Nuevo metodo de cifrado (recomendado)")
+            self.new_encryption =ttk.Radiobutton(self.encriptacion_frame,variable= self.radio_var,value=1 ,text="Nuevo metodo de cifrado (recomendado)")
             self.new_encryption.grid(row=0, column=0, padx=(0, 250), pady=(0, 30))
 
             self.new_encryption_desc = tk.Message(self.encriptacion_frame,  width=500, text="El nuevo metodo usa cifrado asimetrico para incrementar la\nseguridad a la hora de guardar y acceder a tus contraseñas.")
             self.new_encryption_desc.grid(row=0, column=0, padx=(0, 105), pady=(20, 0))
 
-            self.old_encryption = tk.Radiobutton(self.encriptacion_frame,variable= self.radio_var,value=2 ,text="Antigüo metodo de cifrado")
+            self.old_encryption = ttk.Radiobutton(self.encriptacion_frame,variable= self.radio_var,value=2 ,text="Antigüo metodo de cifrado")
             self.old_encryption.grid(row=0, column=0, padx=(0, 330), pady=(100, 0))
 
             self.old_encryption_desc = tk.Message(self.encriptacion_frame,  width=500, text="El viejo metodo usa cifrado simetrico lo que limita la \nseguridad a la hora de guardar y acceder a tus contraseñas.")
             self.old_encryption_desc.grid(row=0, column=0, padx=(0, 108), pady=(150, 0))
 
-            self.continuar_encriptacion_button = tk.Button(
+            self.continuar_encriptacion_button = ttk.Button(
                 self.encriptacion_frame, text="Continuar",width=10,command=self.instalacion)
             self.continuar_encriptacion_button.grid(
                 row=1, column=0, padx=(381, 0), pady=(90, 0))
 
-            self.regresar_encriptacion_button = tk.Button(
+            self.regresar_encriptacion_button = ttk.Button(
                 self.encriptacion_frame, text="Regresar",width=10,command=self.actualizar)
             self.regresar_encriptacion_button.grid(
                 row=1, column=0, padx=(0, 381), pady=(90, 0))
@@ -1830,11 +2003,19 @@ class InstalacionApp:
             self.instalacion()
 
     def instalacion(self):
+        
+
         try:
             if self.radio_var.get() == 0:
                 messagebox.showinfo("Seleccion necesaria", "Selecciona una opcion para la encriptacion de tus contraseñas.")
 
             else:
+
+                def onclick(event=None):
+                    print("You clicked the button or pressed Enter")
+                    self.instalar()
+
+                self.ventana.bind('<Return>', onclick)
 
                 self.encriptacion_frame.destroy()
 
@@ -1863,16 +2044,23 @@ class InstalacionApp:
                     self.instalar_frame, width=100)
                 
 
-                self.boton_instalar = tk.Button(
+                self.boton_instalar = ttk.Button(
                     self.instalar_frame, text="Instalar", width=10,command=self.instalar)
                 self.boton_instalar.grid(row=1, column=0, padx=(380, 0), pady=(240, 0))
 
-                self.regresar_1_button = tk.Button(
+                self.regresar_1_button = ttk.Button(
                     self.instalar_frame, text="Regresar", width=10,command= self.encriptacion)
                 self.regresar_1_button.grid(
                     row=1, column=0, padx=(0,380), pady=(240, 0))
 
         except AttributeError:
+
+            def onclick(event=None):
+                print("You clicked the button or pressed Enter")
+                self.instalar()
+
+            self.ventana.bind('<Return>', onclick)
+
             print("Accediendo con version ")
 
             self.actualizar_frame.destroy()
@@ -1910,11 +2098,11 @@ class InstalacionApp:
                     self.instalar_frame, width=100)
                 
 
-            self.boton_instalar = tk.Button(
+            self.boton_instalar = ttk.Button(
                     self.instalar_frame, text="Instalar", width=10,command=self.instalar)
             self.boton_instalar.grid(row=1, column=0, padx=(380, 0), pady=(240, 0))
 
-            self.regresar_1_button = tk.Button(
+            self.regresar_1_button = ttk.Button(
                     self.instalar_frame, text="Regresar", width=10,command= self.encriptacion)
             self.regresar_1_button.grid(
                     row=1, column=0, padx=(0,380), pady=(240, 0))
@@ -1924,6 +2112,7 @@ class InstalacionApp:
         self.check_var_ex = tk.IntVar()
         
         self.instalar_frame.destroy()
+        self.upper_frame.destroy()
 
         self.exito_frame = tk.Frame(self.ventana, width=600, height=600)
         self.exito_frame.grid(column=1, row=0)
@@ -1965,13 +2154,13 @@ class InstalacionApp:
         self.exito_label.grid(
             row=0, column=0, padx=(0, 0), pady=(0, 320))
 
-        self.shortcut_dsk = tk.Checkbutton(self.exito_frame, text="Agregar atajo al escritorio", variable=self.check_var_dsk)
+        self.shortcut_dsk = ttk.Checkbutton(self.exito_frame, text="Agregar atajo al escritorio", variable=self.check_var_dsk)
         self.shortcut_dsk.grid(row=0, column=0, padx=(0, 0), pady=(0, 200))
 
-        self.execute = tk.Checkbutton(self.exito_frame, text="Abrir aplicacion al finalizar", variable=self.check_var_ex)
+        self.execute = ttk.Checkbutton(self.exito_frame, text="Abrir aplicacion al finalizar", variable=self.check_var_ex)
         self.execute.grid(row=0, column=0, padx=(0, 0), pady=(0, 100))
 
-        self.close_button = tk.Button(
+        self.close_button = ttk.Button(
             self.exito_frame, text="Terminar",width=10,command= self.terminar)
         self.close_button.grid(
             row=0, column=0, padx=(320, 0), pady=(350, 0))
@@ -2026,7 +2215,7 @@ class InstalacionApp:
 
     def terminar(self):
         nombre_acceso_directo = "Administrador de contraseñas"
-        ruta_aplicacion = os.path.join(self.ubicacion_seleccionada, 'Administrador de contraseñas/admin_contrasenas.exe')
+        ruta_aplicacion = os.path.join(self.ubicacion_seleccionada, 'Administrador de contrasenas/admin_contrasenas.exe')
 
         if self.check_var_dsk.get() == 1:
             self.crear_acceso_directo(nombre_acceso_directo,ruta_aplicacion)
@@ -2041,4 +2230,7 @@ ventana = tk.Tk()
 
 app = InstalacionApp(ventana)
 
-ventana.mainloop()
+if is_admin():
+    ventana.mainloop()
+else:
+    ctypes.windll.shell32.ShellExecuteW(None, "runas", "python", "main.py", None, 1)
