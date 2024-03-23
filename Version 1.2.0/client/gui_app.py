@@ -26,7 +26,7 @@ def contar_id():
     return numero_id
 
 
-class Frame(ttk.Frame):
+class Frame(frame_obeject):
     def __init__(self, root=None, data=None):
         super().__init__(root)
         self.root = root
@@ -432,7 +432,6 @@ class Frame(ttk.Frame):
             messagebox.showerror(titulo, mensaje)
 
     def input_code(self):
-        
 
         self.root.withdraw()
         ventana = ctk.CTkToplevel(self.root)
@@ -450,6 +449,7 @@ class Frame(ttk.Frame):
         # Se actualiza la posición de la ventana secundaria
         ventana.geometry("+{}+{}".format(x, y))
 
+
         ventana.lift()
         ventana.grab_set()
 
@@ -464,12 +464,14 @@ class Frame(ttk.Frame):
 
         mi_codigo = tk.StringVar()
 
-        entry_sitio_web = ttk.Entry(
+        entry_codigo = ttk.Entry(
             ventana, show="*", textvariable=mi_codigo)
+        entry_codigo.focus_set()
         style.configure(style='Equilux.TEntry')
-        entry_sitio_web.config(width=30, font=('Segoe UI', 12))
-        entry_sitio_web.grid(
+        entry_codigo.config(width=30, font=('Segoe UI', 12))
+        entry_codigo.grid(
             row=2, padx=(15, 15), columnspan=3)
+
 
         def guardar_datos():
             codigo = str(mi_codigo.get())
@@ -482,6 +484,11 @@ class Frame(ttk.Frame):
                 mensaje = 'El codgio ingresado es incorrecto'
                 messagebox.showerror(
                     title, mensaje)
+
+        def onclick(event=None):
+            guardar_datos()
+
+        ventana.bind('<Return>',onclick)
         
         boton_guardar = ttk.Button(
             ventana, text='Acceder', command=guardar_datos)

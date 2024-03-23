@@ -1,3 +1,3 @@
 """
-This module contains all the methods to access, edit adn visualize the db tables
+This module contains all the methods to access, edit and visualize the db tables
 """
