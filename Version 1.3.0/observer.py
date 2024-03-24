@@ -10,10 +10,10 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 class MyHandler(FileSystemEventHandler):
-	"""
-	Acts as an watchdog to detect any changes in the working directory and run the script each time a change is detected
-	"""
-
+    """
+    Acts as an watchdog to detect any changes in the working directory 
+    and run the script each time a change is detected
+    """
     def __init__(self):
         self.last_event_time = 0
 
@@ -26,7 +26,7 @@ class MyHandler(FileSystemEventHandler):
             self.last_event_time = current_time
             print(f'Change detected: {event.event_type} - {event.src_path}')
             self.restart_script()
-
+            
     def restart_script(self):
         for proc in psutil.process_iter():
             try:
