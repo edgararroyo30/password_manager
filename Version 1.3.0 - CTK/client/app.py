@@ -20,4 +20,4 @@ class App(ctk.CTk):
         self.resizable(0, 0)
         self.iconbitmap('image/app-icon.ico')
         self.configure(fg_color="Black")
-        gui = Gui(self)
+        Gui(self)

@@ -22,7 +22,7 @@ class MyHandler(FileSystemEventHandler):
             return  # Ignore changes in the __pycache__ directory
 
         current_time = time.time()
-        if current_time - self.last_event_time > 5:  # Wait 5 seconds between events
+        if current_time - self.last_event_time > 15:  # Wait 5 seconds between events
             self.last_event_time = current_time
             print(f'Change detected: {event.event_type} - {event.src_path}')
             self.restart_script()

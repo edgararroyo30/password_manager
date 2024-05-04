@@ -4,6 +4,7 @@ Execute the mainloop if file name is main
 
 from client.app import App
 
+
 def main():
     """
     Create the main loop for the app interface
@@ -13,7 +14,4 @@ def main():
 
 
 if __name__ == '__main__':
-   
     main()
-
-
