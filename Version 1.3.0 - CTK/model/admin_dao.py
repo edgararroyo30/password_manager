@@ -3,11 +3,8 @@ Contains all db methods to write, visualise, update and eliminate data
 """
 
 from tkinter import messagebox
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives.asymmetric import padding
-import bcrypt
 from .conexion_db import DBConection, AccescodeConection
-from model.key import Keys
+from protect.decrypt import encrypt
 
 
 def create_table():
@@ -63,40 +60,8 @@ class user:
 def save(user_d):
     conexion = DBConection()
 
-    def decrypt_in(user_data):
+    encrypted_password = encrypt(user_d)
 
-        private_key_string = Keys.private_db_key()
-        private_key_bytes = private_key_string.encode('utf-8')
-        loaded_private_key = serialization.load_pem_private_key(
-            private_key_bytes, password=None)
-
-        get_password = user_data.password
-
-        decrypted_data = loaded_private_key.decrypt(
-            get_password,
-            padding.OAEP(
-                mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                algorithm=hashes.SHA256(),
-                label=None
-            )
-        )
-
-        return decrypted_data
-
-    decrypted_password = decrypt_in(user_d)
-
-    public_key_string = Keys.public_table_key()
-    public_key_bytes = public_key_string.encode('utf-8')
-    loaded_public_key = serialization.load_pem_public_key(public_key_bytes)
-
-    encrypted_password = loaded_public_key.encrypt(
-        decrypted_password,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
 
     get_sitio = user_d.sitio
     get_username = user_d.username
@@ -111,7 +76,7 @@ def save(user_d):
     except Exception as e:
         print(e)
         titulo = 'Conexion al registro'
-        mensaje = 'La tabla no esta creado en la base de datos'
+        mensaje = 'La tabla no esta creada en la base de datos'
         messagebox.showerror(titulo, mensaje)
 
 

@@ -25,7 +25,7 @@ class FullApp(QMainWindow):
         """
         Set dark color palette
         """
-        
+
         palette = QPalette()
         palette.setColor(QPalette.Window, QColor(53, 53, 53))
         palette.setColor(QPalette.WindowText, QColor(255, 255, 255))
@@ -46,6 +46,7 @@ class FullApp(QMainWindow):
         """
         Set windows title bar color to the give input
         """
+        
         win_id = self.winId()
         if QtWin.isCompositionEnabled():
             QtWin.extendFrameIntoClientArea(self, -1, -1, -1, -1)

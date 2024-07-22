@@ -26,7 +26,7 @@ def contar_id():
     return numero_id
 
 
-class Frame(frame_obeject):
+class Frame(ttk.Frame):
     def __init__(self, root=None, data=None):
         super().__init__(root)
         self.root = root
