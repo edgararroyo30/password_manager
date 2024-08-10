@@ -63,15 +63,13 @@ def save(user_d):
 
     encrypted_password = encrypt(user_d.password)
 
-    get_sitio = user_d.website
-    get_username = user_d.username
     sql = """
     INSERT INTO encrypted_data (website, username, password)
     VALUES (?, ?, ?)
     """
     try:
         conexion.cursor.execute(
-            sql, (get_sitio, get_username, encrypted_password))
+            sql, (user_d.website, user_d.username, encrypted_password))
         conexion.cerrar()
     except Exception as e:
         print(e)
@@ -84,17 +82,18 @@ def listar_usuarios():
     conexion = DBConection()
 
     lista_usuarios = []
+    final_list = []
     sql = 'SELECT * FROM encrypted_data'
 
    
     conexion.cursor.execute(sql)
     lista_usuarios = conexion.cursor.fetchall()
     conexion.cerrar()
-
+    
     for p in lista_usuarios:
-        decrypted_password = decrypt(base64.b64decode(p[3]))
-
-        lista_usuarios.append([p[0],p[1], p[2],decrypted_password])
+            final_list.append([p[0],p[1], p[2],decrypt(p[3])])
+    
+    return final_list
 
     
 
