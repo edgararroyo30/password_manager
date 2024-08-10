@@ -4,7 +4,8 @@ Contains all db methods to write, visualise, update and eliminate data
 
 from tkinter import messagebox
 from .conexion_db import DBConection, AccescodeConection
-from protect.decrypt import encrypt
+from protect.decrypt import encrypt, decrypt
+import base64
 
 
 def create_table():
@@ -60,13 +61,12 @@ class user:
 def save(user_d):
     conexion = DBConection()
 
-    encrypted_password = encrypt(user_d)
+    encrypted_password = encrypt(user_d.password)
 
-
-    get_sitio = user_d.sitio
+    get_sitio = user_d.website
     get_username = user_d.username
     sql = """
-    INSERT INTO datos_cifrados (sitio, username, password)
+    INSERT INTO encrypted_data (website, username, password)
     VALUES (?, ?, ?)
     """
     try:
@@ -80,26 +80,26 @@ def save(user_d):
         messagebox.showerror(titulo, mensaje)
 
 
-def listar():
-    conexion = ConexionDB()
+def listar_usuarios():
+    conexion = DBConection()
 
     lista_usuarios = []
-    sql = 'SELECT * FROM datos_cifrados'
+    sql = 'SELECT * FROM encrypted_data'
 
-    try:
-        conexion.cursor.execute(sql)
-        lista_usuarios = conexion.cursor.fetchall()
-        conexion.cerrar()
-    except:
-        titulo = 'Conexion al Registro'
-        mensaje = 'Crea la tabla en la base de datos'
-        messagebox.showwarning(titulo, mensaje)
+   
+    conexion.cursor.execute(sql)
+    lista_usuarios = conexion.cursor.fetchall()
+    conexion.cerrar()
 
-    return lista_usuarios
+    for p in lista_usuarios:
+        decrypted_password = decrypt(base64.b64decode(p[3]))
 
+        lista_usuarios.append([p[0],p[1], p[2],decrypted_password])
+
+    
 
 def editar(user_d, id_user):
-    conexion = ConexionDB()
+    conexion = DBConection()
 
     def decrypt_in(user_data):
 
@@ -154,7 +154,7 @@ def editar(user_d, id_user):
 
 
 def eliminar(id_user):
-    conexion = ConexionDB()
+    conexion = DBConection()
 
     sql = f'DELETE FROM datos_cifrados WHERE id_user = {id_user}'
 
@@ -169,21 +169,21 @@ def eliminar(id_user):
 
 
 def cuenta_id():
-    conexion = ConexionDB()
+    conexion = DBConection()
 
     numero_contrasenas = []
-    sql = 'SELECT id_user FROM datos_cifrados'
+    sql = 'SELECT user_id FROM encrypted_data'
 
     try:
         conexion.cursor.execute(sql)
         numero_contrasenas = conexion.cursor.fetchall()
         conexion.cerrar()
+        numero_contrasenas = len(numero_contrasenas)
+        return numero_contrasenas
     except:
         titulo = 'Conexion al Registro'
-        mensaje = 'Crea la tabla en la base de datos'
+        mensaje = 'La tabla esta vacia'
         messagebox.showwarning(titulo, mensaje)
-
-    return numero_contrasenas
 
 
 def create_table_codigo():
