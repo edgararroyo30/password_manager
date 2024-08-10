@@ -3,9 +3,10 @@ Build ctk frames
 """
 
 import customtkinter as ctk
+from tkinter import ttk
 
 
-class FrameBuilder(ctk.CTkFrame):
+class FrameBuilder(ttk.Frame):
     """
     Build ctk frames
     """
