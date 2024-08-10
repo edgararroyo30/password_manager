@@ -9,6 +9,7 @@ def decrypt(user_password):
         private_key_bytes = private_key_string.encode('utf-8')
         loaded_private_key = serialization.load_pem_private_key(
             private_key_bytes, password=None)
+        
 
         decrypted_data = loaded_private_key.decrypt(
             user_password,
@@ -19,7 +20,7 @@ def decrypt(user_password):
             )
         )
 
-        return decrypted_data
+        return decrypted_data.decode("utf-8")
 
 def encrypt(user_password):
 
