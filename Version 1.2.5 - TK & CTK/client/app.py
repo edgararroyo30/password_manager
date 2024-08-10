@@ -1,5 +1,5 @@
 """
-The main module to create the Graphic user interface 
+Create the Graphic user interface 
 """
 
 import customtkinter as ctk
