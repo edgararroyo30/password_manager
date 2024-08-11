@@ -30,7 +30,6 @@ class Gui():
         self.content()
         self.styles()
 
-
     def styles(self):
         self.style.configure("TButton", width=10, font=('Segoe UI', 8),
                              cursor='hand2', focuscolor='none', borderwidth=2,
@@ -38,32 +37,55 @@ class Gui():
                              highlightcolor='#35BD6F', highlightbackground='#35BD6F')
         
     def table(self, frame):
-        tabla = ttk.Treeview(frame,
+        self.tabla = ttk.Treeview(frame,
                                   column=('Web Site', 'Username', 'Password'))
-        tabla.grid(row=4, column=0, columnspan=3,
+        self.tabla.grid(row=4, column=0, columnspan=3,
                         sticky='nse', padx=10, pady=(0, 10))
 
         scroll = ttk.Scrollbar(frame,
-                                    orient='vertical', command=tabla.yview)
+                                    orient='vertical', command=self.tabla.yview)
         scroll.grid(row=4, column=2, padx=(
             1, 10), pady=(0, 10), sticky='nse')
-        tabla.configure(yscrollcommand=scroll.set)
+        self.tabla.configure(yscrollcommand=scroll.set)
 
-        tabla.heading('#0', text='ID')
-        tabla.heading('#1', text='Web Site')
-        tabla.heading('#2', text='Username')
-        tabla.heading('#3', text='Password')
+        self.tabla.heading('#1', text='Web Site')
+        self.tabla.heading('#2', text='Username')
+        self.tabla.heading('#3', text='Password')
 
+        self.tabla.column("#0", width=0, stretch=False)
+        self.tabla.config(displaycolumns=(
+            'Web Site', 'Username', 'Password'))
+        self.update_table()
 
-        for p in listar_usuarios():
-
-          tabla.insert('', 0, text=p[0],
-                       values=(p[1], p[2], decrypted_password))
+    def update_table(self):
+        children = self.tabla.get_children()
         
 
-        tabla.column("#0", width=0, stretch=False)
-        tabla.config(displaycolumns=(
-            'Web Site', 'Username', 'Password'))
+        if not children:
+
+            try:
+                for p in listar_usuarios(0):
+
+                    self.tabla.insert('', 0,iid=p[0],
+                       values=(p[1], p[2], p[3]))
+            except TypeError as e:
+                if "'NoneType' object is not iterable" in str(e):
+                    print("Error: Tried to iterate on a None object.")
+                else:
+                    print(f"Unexpected error: {e}")
+        else:
+            try:
+                last_item = self.tabla.get_children()[0]
+
+                for p in listar_usuarios(int(last_item)):
+
+                    self.tabla.insert('', 0, iid=p[0],
+                       values=(p[1], p[2], p[3]))
+            except TypeError as e:
+                if "'NoneType' object is not iterable" in str(e):
+                    print("Error: Tried to iterate on a None object.")
+                else:
+                    print(f"Unexpected error: {e}")
 
     def content(self):
         """
@@ -90,14 +112,18 @@ class Gui():
         boton_buscar.grid(row=3, column=1,
                                padx=(2, 0), pady=(10, 2))
 
-        mi_cuenta_usuarios = (f"{cuenta_id()} saved passwords")
+        self.label_usuarios = ttk.Label(content_frame)
+       
+        self.label_usuarios.grid(row=3, padx=(10, 180), pady=(12, 2))
 
-        label_usuarios = ttk.Label(content_frame, text=mi_cuenta_usuarios)
-        label_usuarios.config(
-            width=30, font=('Segoe UI', 10, 'bold'))
-        label_usuarios.grid(row=3, padx=(10, 180), pady=(12, 2))
+        self.update_users_count()
 
         self.table(content_frame)
+
+    def update_users_count(self):
+        user_count = (f"{cuenta_id()} saved passwords")
+        self.label_usuarios.config(
+            width=30, font=('Segoe UI', 10, 'bold'),text=user_count)
 
     def new_user(self):
         new_user_window = tk.Toplevel(self.frame)
@@ -127,6 +153,8 @@ class Gui():
                self.mi_contrasena_add.get())
             save(user_data)
             new_user_window.destroy()
+            self.update_table()
+            self.update_users_count()
 
         def destroy():
             new_user_window.destroy()
@@ -209,3 +237,5 @@ class Gui():
             row=6, column=1,  padx=(0, 20), pady=(14, 10))
 
         new_user_content()
+
+
