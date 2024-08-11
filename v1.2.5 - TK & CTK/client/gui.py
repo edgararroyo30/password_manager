@@ -25,7 +25,7 @@ class Gui():
         Stablish the frame that is given as the self.frame and call main content functions
         """
         self.frame = frame
-        
+        self.detached_items = []
         self.content()
 
     def styles(self):
@@ -113,7 +113,12 @@ class Gui():
         entry_buscar.grid(
             row=3, padx=(250, 0), pady=(10, 2), columnspan=1)
 
-        boton_buscar = ttk.Button(content_frame, text='Search')
+        def search(*args):
+            self.search_and_highlight(self.tabla, mi_busqueda.get())
+
+        mi_busqueda.trace_add("write", search)
+
+        boton_buscar = ttk.Button(content_frame, text='Search', command=search)
 
         boton_buscar.grid(row=3, column=1,
                                padx=(2, 0), pady=(10, 2))
@@ -249,4 +254,25 @@ class Gui():
 
         new_user_content()
 
+
+
+
+    def search_and_highlight(self, tree, search_string):
+        
+        if search_string == "":
+            for item in self.detached_items:
+                tree.reattach(item,'','end')
+        else:
+
+            for item in self.detached_items:
+                tree.reattach(item,'','end')
+
+            for item in tree.get_children():
+                if search_string.lower() in str(tree.item(item)["values"]).lower():
+                    tree.reattach(item,'','end')
+
+                else:
+                    self.detached_items.append(item)
+                    tree.detach(item)
+                
 
