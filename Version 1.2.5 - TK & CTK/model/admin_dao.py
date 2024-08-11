@@ -78,15 +78,15 @@ def save(user_d):
         messagebox.showerror(titulo, mensaje)
 
 
-def listar_usuarios():
+def listar_usuarios(user_id):
     conexion = DBConection()
 
     lista_usuarios = []
     final_list = []
-    sql = 'SELECT * FROM encrypted_data'
+    sql = 'SELECT * FROM encrypted_data WHERE user_id > ?'
 
    
-    conexion.cursor.execute(sql)
+    conexion.cursor.execute(sql, (user_id,))
     lista_usuarios = conexion.cursor.fetchall()
     conexion.cerrar()
     
