@@ -95,7 +95,6 @@ def listar_usuarios(user_id):
     
     return final_list
 
-    
 
 def editar(user_d, id_user):
     conexion = DBConection()
@@ -152,10 +151,10 @@ def editar(user_d, id_user):
         messagebox.showerror(titulo, mensaje)
 
 
-def eliminar(id_user):
+def eliminar(user_id):
     conexion = DBConection()
 
-    sql = f'DELETE FROM datos_cifrados WHERE id_user = {id_user}'
+    sql = f'DELETE FROM encrypted_data WHERE user_id = {user_id}'
 
     try:
         conexion.cursor.execute(sql)
