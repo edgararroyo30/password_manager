@@ -57,7 +57,6 @@ class user:
     def __str__(self):
         return f'user[{self.website}, {self.username}, {self.password}]'
 
-
 def save(user_d):
     conexion = DBConection()
 
@@ -77,7 +76,6 @@ def save(user_d):
         mensaje = 'La tabla no esta creada en la base de datos'
         messagebox.showerror(titulo, mensaje)
 
-
 def listar_usuarios(user_id):
     conexion = DBConection()
 
@@ -95,60 +93,24 @@ def listar_usuarios(user_id):
     
     return final_list
 
-
 def editar(user_d, id_user):
     conexion = DBConection()
 
-    def decrypt_in(user_data):
+    encrypted_password = encrypt(user_d.password)
 
-        private_key_string = private_db_key()
-        private_key_bytes = private_key_string.encode('utf-8')
-        loaded_private_key = serialization.load_pem_private_key(
-            private_key_bytes, password=None)
-
-        get_password = user_data.password
-
-        decrypted_data = loaded_private_key.decrypt(
-            get_password,
-            padding.OAEP(
-                mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                algorithm=hashes.SHA256(),
-                label=None
-            )
-        )
-
-        return decrypted_data
-
-    decrypted_password = decrypt_in(user_d)
-
-    public_key_string = public_table_key()
-    public_key_bytes = public_key_string.encode('utf-8')
-    loaded_public_key = serialization.load_pem_public_key(public_key_bytes)
-
-    encrypted_password = loaded_public_key.encrypt(
-        decrypted_password,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
-
-    sql = f"""UPDATE datos_cifrados
-    SET sitio = ?, username = ?,
+    sql = f"""UPDATE encrypted_data
+    SET website = ?, username = ?,
     password = ?
-    WHERE id_user = ?
+    WHERE user_id = ?
     """
 
     try:
         conexion.cursor.execute(
-            sql, (user_d.sitio, user_d.username, encrypted_password, id_user))
+            sql, (user_d.website, user_d.username, encrypted_password, id_user))
         conexion.cerrar()
 
-    except:
-        titulo = 'Edicion de datos'
-        mensaje = 'No se a podido editar este registro'
-        messagebox.showerror(titulo, mensaje)
+    except Exception as e:
+        print(e)
 
 
 def eliminar(user_id):

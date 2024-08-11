@@ -7,7 +7,7 @@ from tkinter import ttk
 import customtkinter as ctk
 from ttkthemes import ThemedStyle
 from client.frame_builder import FrameBuilder
-from model.admin_dao import cuenta_id, listar_usuarios, save, user, eliminar
+from model.admin_dao import cuenta_id, listar_usuarios, save, user, eliminar, editar
 from protect.password_generator import generate_password
 
 
@@ -68,7 +68,7 @@ class Gui():
     def update_table(self, status):
         children = self.tabla.get_children()
         
-        if status == "user_deleted":
+        if status == "user_deleted" or status == "user_updated":
 
             try:
                 for item in self.tabla.get_children():
@@ -325,9 +325,9 @@ class Gui():
                 self.mi_sitio_web_edit.get(),
                 self.mi_nombre_usuario_edit.get(),
                self.mi_contrasena_edit.get())
-            save(user_data)
+            editar(user_data, int(self.tabla.item(self.tabla.selection())["text"]))
             new_user_window.destroy()
-            self.update_table()
+            self.update_table("user_updated")
             self.update_users_count()
 
         def destroy():
@@ -364,6 +364,8 @@ class Gui():
             entry_sitio_web.grid(
             row=1, padx=(15, 16), columnspan=3)
 
+            entry_sitio_web.insert(0,self.tabla.item(self.tabla.selection())['values'][0])
+
             self.mi_nombre_usuario_edit = tk.StringVar()
 
             entry_nombre_usuario = ttk.Entry(
@@ -374,12 +376,14 @@ class Gui():
             entry_nombre_usuario.grid(
             row=3, padx=(16, 16), columnspan=3)
 
+            entry_nombre_usuario.insert(0,self.tabla.item(self.tabla.selection())['values'][1])
+
             mi_contrasena = generate_password()
             self.mi_contrasena_edit = tk.StringVar()
 
             entry_contrasena = ttk.Entry(
             new_user_window, textvariable=self.mi_contrasena_edit)
-            entry_contrasena.insert(0, mi_contrasena)
+
             style.configure(
             style='Equilux.TEntry')
 
@@ -387,6 +391,8 @@ class Gui():
                                 font=('Segoe UI', 12))
             entry_contrasena.grid(
             row=5, padx=(16, 16), columnspan=3)
+
+            entry_contrasena.insert(0,self.tabla.item(self.tabla.selection())['values'][2])
 
             boton_guardar = ttk.Button(
             new_user_window, text='Save', command=save_data)
