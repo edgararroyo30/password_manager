@@ -27,6 +27,7 @@ class Gui():
         """
         self.frame = frame
         self.detached_items = []
+        
         self.content()
 
     def styles(self):
@@ -164,7 +165,7 @@ class Gui():
         """
         Window for new users
         """
-        new_user_window = tk.Toplevel(self.frame)
+        new_user_window = ctk.CTkToplevel(self.frame)
         new_user_window.config(background=self.style.lookup('TFrame', 'background'))
         new_user_window.title('Add User')
         new_user_window.iconbitmap('image/app-icon.ico')
@@ -300,7 +301,7 @@ class Gui():
         """
         Window for new users
         """
-        new_user_window = tk.Toplevel(self.frame)
+        new_user_window = ctk.CTkToplevel(self.frame)
         new_user_window.config(background=self.style.lookup('TFrame', 'background'))
         new_user_window.title('Edit User')
         new_user_window.iconbitmap('image/app-icon.ico')
