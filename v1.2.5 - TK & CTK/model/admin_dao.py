@@ -4,7 +4,7 @@ Contains all db methods to write, visualise, update and eliminate data
 
 from tkinter import messagebox
 from .conexion_db import DBConection, AccescodeConection
-from protect.decrypt import encrypt, decrypt
+from protect.decrypt import encrypt, decrypt, hash_code, check_hash
 import base64
 
 
@@ -112,7 +112,6 @@ def editar(user_d, id_user):
     except Exception as e:
         print(e)
 
-
 def eliminar(user_id):
     conexion = DBConection()
 
@@ -126,7 +125,6 @@ def eliminar(user_id):
         titulo = 'Eliminar datos'
         mensaje = 'No se pudo eliminar el registro'
         messagebox.showerror(titulo, mensaje)
-
 
 def cuenta_id():
     conexion = DBConection()
@@ -145,22 +143,20 @@ def cuenta_id():
         mensaje = 'La tabla esta vacia'
         messagebox.showwarning(titulo, mensaje)
 
-
 def create_table_codigo():
-    conexion = ConexionCodigo()
+    conexion = AccescodeConection()
 
-    sql = """CREATE TABLE if NOT EXISTS codigo (
+    sql = """CREATE TABLE if NOT EXISTS access_code (
         code BLOB
         )"""
 
     conexion.cursor.execute(sql)
     conexion.cerrar()
 
+def code_validation():
+    conexion = AccescodeConection()
 
-def solicitar_clave_acceso():
-    conexion = ConexionCodigo()
-
-    sql = 'SELECT * FROM codigo'
+    sql = 'SELECT * FROM access_code'
 
     conexion.cursor.execute(sql)
     codigo = conexion.cursor.fetchone()
@@ -171,30 +167,28 @@ def solicitar_clave_acceso():
 
     return True
 
+def insert_code(code):
+    conexion = AccescodeConection()
 
-def save_code(code):
-    conexion = ConexionCodigo()
+    codigo_hashed = hash_code(code)
 
-    codgio_bytes = code.encode()
-    codigo_hashed = bcrypt.hashpw(codgio_bytes, bcrypt.gensalt())
-
-    sql = """INSERT INTO codigo VALUES (?)"""
+    sql = """INSERT INTO access_code VALUES (?)"""
 
     conexion.cursor.execute(sql, (codigo_hashed,))
     conexion.cerrar()
 
-
 def check_code(code):
-    conexion = ConexionCodigo()
+    conexion = AccescodeConection()
 
-    sql = 'SELECT code FROM codigo'
+    sql = 'SELECT code FROM access_code'
 
     conexion.cursor.execute(sql)
     codigo = conexion.cursor.fetchone()
     conexion.cerrar()
 
-    if codigo is not None:
-        hashed_password = codigo[0]
-        codigo_bytes = code.encode()
-        return bcrypt.checkpw(codigo_bytes, hashed_password)
-    return False
+    if codigo is None:
+    
+        return False
+    else:
+        
+        return check_hash(codigo,code)
