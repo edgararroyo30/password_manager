@@ -3,11 +3,11 @@ All the sections in the menu
 """
 import pyperclip
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import customtkinter as ctk
 from ttkthemes import ThemedStyle
 from client.frame_builder import FrameBuilder
-from model.admin_dao import cuenta_id, listar_usuarios, save, user, eliminar, editar
+from model.admin_dao import cuenta_id, listar_usuarios, save, user, eliminar, editar, code_validation, insert_code, check_code
 from protect.password_generator import generate_password
 
 
@@ -28,7 +28,8 @@ class Gui():
         self.frame = frame
         self.detached_items = []
         
-        self.content()
+        self.access_code()
+        
 
     def styles(self):
         """
@@ -169,7 +170,6 @@ class Gui():
         new_user_window.config(background=self.style.lookup('TFrame', 'background'))
         new_user_window.title('Add User')
         new_user_window.iconbitmap('image/app-icon.ico')
-        style = ThemedStyle(new_user_window)
 
         new_user_window.geometry("310x250")
 
@@ -183,6 +183,8 @@ class Gui():
         new_user_window.lift()
 
         new_user_window.overrideredirect(False)
+
+        new_user_window.attributes("-topmost", True)
 
         def save_data():
             
@@ -201,20 +203,20 @@ class Gui():
         def new_user_content():
 
             label_sitio_web = ttk.Label(new_user_window, text='Web site')
-            style.configure(style='Equilux.TLabel')
+            
             label_sitio_web.config(
             width=17, font=('Segoe UI', 10))
             label_sitio_web.grid(row=0, padx=(1, 10), pady=(14, 4))
 
             label_nombre_usuario = ttk.Label(
             new_user_window, text='Username ')
-            style.configure(style='Equilux.TLabel')
+            
             label_nombre_usuario.config(
             width=17, font=('Segoe UI', 10))
             label_nombre_usuario.grid(row=2, padx=(1, 10), pady=(14, 4))
 
             label_contraseña = ttk.Label(new_user_window, text='Password ')
-            style.configure(style='Equilux.TLabel')
+            
             label_contraseña.config(
             width=17, font=('Segoe UI', 10))
             label_contraseña.grid(row=4, padx=(1, 10), pady=(14, 4))
@@ -224,7 +226,7 @@ class Gui():
 
             entry_sitio_web = ttk.Entry(
             new_user_window, textvariable=self.mi_sitio_web_add)
-            style.configure(style='Equilux.TEntry')
+            
             entry_sitio_web.config(width=30, font=('Segoe UI', 12))
             entry_sitio_web.grid(
             row=1, padx=(15, 16), columnspan=3)
@@ -233,7 +235,7 @@ class Gui():
 
             entry_nombre_usuario = ttk.Entry(
             new_user_window, textvariable=self.mi_nombre_usuario_add)
-            style.configure(style='Equilux.TEntry')
+            
             entry_nombre_usuario.config(width=30,
                                     font=('Segoe UI', 12))
             entry_nombre_usuario.grid(
@@ -245,8 +247,7 @@ class Gui():
             entry_contrasena = ttk.Entry(
             new_user_window, textvariable=self.mi_contrasena_add)
             entry_contrasena.insert(0, mi_contrasena)
-            style.configure(
-            style='Equilux.TEntry')
+            
 
             entry_contrasena.config(width=30,
                                 font=('Segoe UI', 12))
@@ -256,21 +257,12 @@ class Gui():
             boton_guardar = ttk.Button(
             new_user_window, text='Save', command=save_data)
 
-            style.configure("RoundedButton.TButton", width=25, font=('Segoe UI', 12, 'bold'),
-                        cursor='hand2', focuscolor='none', borderwidth=2,
-                        bd=2, relief="solid", anchor='center',
-                        highlightcolor='#35BD6F', highlightbackground='#35BD6F')
 
             boton_guardar.grid(
             row=6, column=0,  padx=(30, 10), pady=(14, 10))
 
             boton_cancelar = ttk.Button(
             new_user_window, text='Cancel', command=destroy)
-
-            style.configure("RoundedButton.TButton", width=25, font=('Segoe UI', 12, 'bold'),
-                        cursor='hand2', focuscolor='none', borderwidth=2,
-                        bd=2, relief="solid", anchor='center',
-                        highlightcolor='#35BD6F', highlightbackground='#35BD6F')
 
             boton_cancelar.grid(
             row=6, column=1,  padx=(0, 20), pady=(14, 10))
@@ -301,24 +293,26 @@ class Gui():
         """
         Window for new users
         """
-        new_user_window = ctk.CTkToplevel(self.frame)
-        new_user_window.config(background=self.style.lookup('TFrame', 'background'))
-        new_user_window.title('Edit User')
-        new_user_window.iconbitmap('image/app-icon.ico')
-        style = ThemedStyle(new_user_window)
+        edit_user_window = ctk.CTkToplevel(self.frame)
+        edit_user_window.config(background=self.style.lookup('TFrame', 'background'))
+        edit_user_window.title('Edit User')
+        edit_user_window.iconbitmap('image/app-icon.ico')
+        style = ThemedStyle(edit_user_window)
 
-        new_user_window.geometry("310x250")
+        edit_user_window.geometry("310x250")
 
         x = self.frame.winfo_x() + (self.frame.winfo_width() // 2) - \
-            (new_user_window.winfo_width() // 2)
+            (edit_user_window.winfo_width() // 2)
         y = self.frame.winfo_y() + (self.frame.winfo_height() // 2) - \
-            (new_user_window.winfo_height() // 2)
+            (edit_user_window.winfo_height() // 2)
 
-        new_user_window.geometry("+{}+{}".format(x, y))
+        edit_user_window.geometry("+{}+{}".format(x, y))
 
-        new_user_window.lift()
+        edit_user_window.lift()
 
-        new_user_window.overrideredirect(False)
+        edit_user_window.overrideredirect(False)
+
+        edit_user_window.attributes("-topmost", True)
 
         def save_data():
             
@@ -327,29 +321,29 @@ class Gui():
                 self.mi_nombre_usuario_edit.get(),
                self.mi_contrasena_edit.get())
             editar(user_data, int(self.tabla.item(self.tabla.selection())["text"]))
-            new_user_window.destroy()
+            edit_user_window.destroy()
             self.update_table("user_updated")
             self.update_users_count()
 
         def destroy():
-            new_user_window.destroy()
+            edit_user_window.destroy()
 
         def edit_user_content():
 
-            label_sitio_web = ttk.Label(new_user_window, text='Web site')
+            label_sitio_web = ttk.Label(edit_user_window, text='Web site')
             style.configure(style='Equilux.TLabel')
             label_sitio_web.config(
             width=17, font=('Segoe UI', 10))
             label_sitio_web.grid(row=0, padx=(1, 10), pady=(14, 4))
 
             label_nombre_usuario = ttk.Label(
-            new_user_window, text='Username ')
+            edit_user_window, text='Username ')
             style.configure(style='Equilux.TLabel')
             label_nombre_usuario.config(
             width=17, font=('Segoe UI', 10))
             label_nombre_usuario.grid(row=2, padx=(1, 10), pady=(14, 4))
 
-            label_contraseña = ttk.Label(new_user_window, text='Password ')
+            label_contraseña = ttk.Label(edit_user_window, text='Password ')
             style.configure(style='Equilux.TLabel')
             label_contraseña.config(
             width=17, font=('Segoe UI', 10))
@@ -359,7 +353,7 @@ class Gui():
             self.mi_sitio_web_edit = tk.StringVar()
 
             entry_sitio_web = ttk.Entry(
-            new_user_window, textvariable=self.mi_sitio_web_edit)
+            edit_user_window, textvariable=self.mi_sitio_web_edit)
             style.configure(style='Equilux.TEntry')
             entry_sitio_web.config(width=30, font=('Segoe UI', 12))
             entry_sitio_web.grid(
@@ -370,7 +364,7 @@ class Gui():
             self.mi_nombre_usuario_edit = tk.StringVar()
 
             entry_nombre_usuario = ttk.Entry(
-            new_user_window, textvariable=self.mi_nombre_usuario_edit)
+            edit_user_window, textvariable=self.mi_nombre_usuario_edit)
             style.configure(style='Equilux.TEntry')
             entry_nombre_usuario.config(width=30,
                                     font=('Segoe UI', 12))
@@ -383,7 +377,7 @@ class Gui():
             self.mi_contrasena_edit = tk.StringVar()
 
             entry_contrasena = ttk.Entry(
-            new_user_window, textvariable=self.mi_contrasena_edit)
+            edit_user_window, textvariable=self.mi_contrasena_edit)
 
             style.configure(
             style='Equilux.TEntry')
@@ -396,7 +390,7 @@ class Gui():
             entry_contrasena.insert(0,self.tabla.item(self.tabla.selection())['values'][2])
 
             boton_guardar = ttk.Button(
-            new_user_window, text='Save', command=save_data)
+            edit_user_window, text='Save', command=save_data)
 
             style.configure("RoundedButton.TButton", width=25, font=('Segoe UI', 12, 'bold'),
                         cursor='hand2', focuscolor='none', borderwidth=2,
@@ -407,7 +401,7 @@ class Gui():
             row=6, column=0,  padx=(30, 10), pady=(14, 10))
 
             boton_cancelar = ttk.Button(
-            new_user_window, text='Cancel', command=destroy)
+            edit_user_window, text='Cancel', command=destroy)
 
             style.configure("RoundedButton.TButton", width=25, font=('Segoe UI', 12, 'bold'),
                         cursor='hand2', focuscolor='none', borderwidth=2,
@@ -445,3 +439,71 @@ class Gui():
             label="Copy", command=copy_data)
 
         self.tabla.bind("<Button-3>", show_menu)
+
+    def access_code(self):
+        self.styles()
+        access_frame = FrameBuilder(self.frame)
+        access_frame.configure( width=624, height=250)
+        access_frame.grid(row=0, column=0, padx=(0, 0), pady=(0, 0))
+
+        def code_exists():
+
+            def send_code():
+                if check_code(self.input_code.get()) is True:
+                    access_frame.destroy()
+                    self.content()
+                else:
+                    titulo = 'Login'
+                    mensaje = "The code is incorrect"
+                    messagebox.showerror(titulo, mensaje)
+
+            login_button = ttk.Button( access_frame, text='Log in',width=15, command=send_code)
+            login_button.grid(row=2, column=0, pady=(40,0))
+
+            login_label = ttk.Label(access_frame, text="Enter access code", font=("Segoe UI", 15, "bold"))
+            login_label.grid(row=0, column=0, pady=(50,0))
+
+            self.input_code = tk.StringVar()
+
+            login_entry = ttk.Entry(access_frame, width=15, textvariable=self.input_code, show="*")
+            login_entry.grid(row=1, column=0, pady=(30,0))
+
+            space = ttk.Label(access_frame, text="")
+            space.grid(padx=(630,0), pady=(300,0))
+
+        def create_code():
+
+            def save_code():
+
+                if self.user_code.get() == self.confirm_code.get():
+                    insert_code(self.confirm_code.get())
+                    access_frame.destroy()
+                    self.content()
+                else:
+                    titulo = 'Create acess code'
+                    mensaje = "The code didn't match"
+                    messagebox.showerror(titulo, mensaje)
+
+            login_button = ttk.Button( access_frame, text='Log in',width=15, command=save_code)
+            login_button.grid(row=2, column=0, pady=(40,0))
+
+            login_label = ttk.Label(access_frame, text="Create access code", font=("Segoe UI", 15, "bold"))
+            login_label.grid(row=0, column=0, pady=(50,0))
+
+            self.user_code = tk.StringVar()
+
+            login_entry = ttk.Entry(access_frame, width=15, textvariable=self.user_code, show="*")
+            login_entry.grid(row=1, column=0, pady=(0,10))
+
+            self.confirm_code = tk.StringVar()
+
+            confirm_entry = ttk.Entry(access_frame, width=15, textvariable=self.confirm_code, show="*")
+            confirm_entry.grid(row=1, column=0, pady=(60,0))
+
+            space = ttk.Label(access_frame, text="")
+            space.grid(padx=(630,0), pady=(300,0))
+
+        if code_validation() is False:
+            create_code()
+        else:
+            code_exists()
