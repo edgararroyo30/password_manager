@@ -40,3 +40,16 @@ def encrypt(user_password):
     )
 
     return encrypted_password
+
+def hash_code(user_code):
+    codgio_bytes = user_code.encode('utf-8')
+    codigo_hashed = bcrypt.hashpw(codgio_bytes, bcrypt.gensalt())
+
+    return  codigo_hashed
+
+def check_hash(db_code, input_code):
+    hashed_password = db_code[0]
+    codigo_bytes = input_code.encode('utf-8')
+
+
+    return bcrypt.checkpw(codigo_bytes, hashed_password)

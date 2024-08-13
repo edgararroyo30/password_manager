@@ -3,7 +3,7 @@ Execute the mainloop if file name is main
 """
 
 from client.app import App
-from model.admin_dao import create_table
+from model.admin_dao import create_table, create_table_codigo
 
 def main():
     """
@@ -15,4 +15,5 @@ def main():
 
 if __name__ == '__main__':
     create_table()
+    create_table_codigo()
     main()
