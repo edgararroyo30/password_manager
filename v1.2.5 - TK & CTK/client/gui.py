@@ -15,12 +15,6 @@ class Gui():
     """
     Creates the main GUI
     """
-    main_color = "black"
-    text_color = "#ffffff"
-    hover_color = '#808080'
-    label_font = ("Segoe UI", 11, "bold")
-    label_foreground = 'black'
-
     def __init__(self, frame):
         """
         Stablish the frame that is given as the self.frame and call main content functions
@@ -30,7 +24,6 @@ class Gui():
         
         self.access_code()
         
-
     def styles(self):
         """
         Defines the styles for ttk objects
@@ -170,6 +163,7 @@ class Gui():
         new_user_window.config(background=self.style.lookup('TFrame', 'background'))
         new_user_window.title('Add User')
         new_user_window.iconbitmap('image/app-icon.ico')
+        new_user_window.resizable(0, 0)
 
         new_user_window.geometry("310x250")
 
@@ -297,6 +291,7 @@ class Gui():
         edit_user_window.config(background=self.style.lookup('TFrame', 'background'))
         edit_user_window.title('Edit User')
         edit_user_window.iconbitmap('image/app-icon.ico')
+        edit_user_window.resizable(0, 0)
         style = ThemedStyle(edit_user_window)
 
         edit_user_window.geometry("310x250")
@@ -451,6 +446,7 @@ class Gui():
             def send_code():
                 if check_code(self.input_code.get()) is True:
                     access_frame.destroy()
+                    self.frame.unbind("<Return>")
                     self.content()
                 else:
                     titulo = 'Login'
@@ -471,6 +467,10 @@ class Gui():
             space = ttk.Label(access_frame, text="")
             space.grid(padx=(630,0), pady=(300,0))
 
+            def on_click(event):
+                send_code()
+            self.frame.bind("<Return>", on_click)
+
         def create_code():
 
             def save_code():
@@ -478,6 +478,7 @@ class Gui():
                 if self.user_code.get() == self.confirm_code.get():
                     insert_code(self.confirm_code.get())
                     access_frame.destroy()
+                    self.frame.unbind("<Return>")
                     self.content()
                 else:
                     titulo = 'Create acess code'
@@ -502,6 +503,10 @@ class Gui():
 
             space = ttk.Label(access_frame, text="")
             space.grid(padx=(630,0), pady=(300,0))
+
+            def on_click(event):
+                save_code()
+            self.frame.bind("<Return>", on_click)
 
         if code_validation() is False:
             create_code()
