@@ -42,9 +42,7 @@ class Gui():
         """
         self.tabla = ttk.Treeview(frame,
                                   column=('Web Site', 'Username', 'Password'))
-        self.tabla.grid(row=4, column=0, columnspan=3,
-                        sticky='nse', padx=10, pady=(0, 10))
-
+        
         scroll = ttk.Scrollbar(frame,
                                     orient='vertical', command=self.tabla.yview)
         scroll.grid(row=4, column=2, padx=(
@@ -59,6 +57,9 @@ class Gui():
         self.tabla.config(displaycolumns=(
             'Web Site', 'Username', 'Password'))
         self.update_table('')
+
+        self.tabla.grid(row=4, column=0, columnspan=3,
+                        sticky='nse', padx=10, pady=(0, 10))
 
     def update_table(self, status):
         children = self.tabla.get_children()
@@ -115,18 +116,13 @@ class Gui():
         """
         content_frame = FrameBuilder(self.frame)
         content_frame.configure( width=624, height=250)
-        content_frame.grid(row=0, column=0, padx=(0, 0), pady=(0, 0))
-
+        
         boton_nuevo = ttk.Button( content_frame, text='Add User', command=self.new_user,width=15)
-
-        boton_nuevo.grid(row=3, column=2,
-                              padx=(2, 10), pady=(10, 2))
 
         mi_busqueda = tk.StringVar()
         entry_buscar = ttk.Entry(content_frame, textvariable=mi_busqueda)
         entry_buscar.config(width=25, font=('Segoe UI', 9))
-        entry_buscar.grid(
-            row=3, padx=(250, 0), pady=(10, 2), columnspan=1)
+        
 
         def search(*args):
             self.search_and_highlight(self.tabla, mi_busqueda.get())
@@ -135,12 +131,19 @@ class Gui():
 
         boton_buscar = ttk.Button(content_frame, text='Search', command=search)
 
-        boton_buscar.grid(row=3, column=1,
-                               padx=(2, 0), pady=(10, 2))
-
+    
         self.label_usuarios = ttk.Label(content_frame)
        
-        self.label_usuarios.grid(row=3, padx=(10, 180), pady=(12, 2))
+        content_frame.grid(
+            row=0, column=0, padx=(0, 0), pady=(0, 0))
+        boton_nuevo.grid(
+            row=3, column=2, padx=(2, 10), pady=(10, 2))
+        entry_buscar.grid(
+            row=3, padx=(250, 0), pady=(10, 2), columnspan=1)
+        boton_buscar.grid(
+            row=3, column=1, padx=(2, 0), pady=(10, 2))
+        self.label_usuarios.grid(
+            row=3, padx=(10, 180), pady=(12, 2))
 
         self.update_users_count()
 
@@ -159,6 +162,21 @@ class Gui():
         """
         Window for new users
         """
+
+        def save_data():
+            
+            user_data = user(
+                self.mi_sitio_web_add.get(),
+                self.mi_nombre_usuario_add.get(),
+               self.mi_contrasena_add.get())
+            save(user_data)
+            new_user_window.destroy()
+            self.update_table('')
+            self.update_users_count()
+
+        def destroy():
+            new_user_window.destroy()
+
         new_user_window = ctk.CTkToplevel(self.frame)
         new_user_window.config(background=self.style.lookup('TFrame', 'background'))
         new_user_window.title('Add User')
@@ -180,19 +198,6 @@ class Gui():
 
         new_user_window.attributes("-topmost", True)
 
-        def save_data():
-            
-            user_data = user(
-                self.mi_sitio_web_add.get(),
-                self.mi_nombre_usuario_add.get(),
-               self.mi_contrasena_add.get())
-            save(user_data)
-            new_user_window.destroy()
-            self.update_table('')
-            self.update_users_count()
-
-        def destroy():
-            new_user_window.destroy()
 
         def new_user_content():
 
@@ -200,31 +205,26 @@ class Gui():
             
             label_sitio_web.config(
             width=17, font=('Segoe UI', 10))
-            label_sitio_web.grid(row=0, padx=(1, 10), pady=(14, 4))
-
+            
             label_nombre_usuario = ttk.Label(
             new_user_window, text='Username ')
             
             label_nombre_usuario.config(
             width=17, font=('Segoe UI', 10))
-            label_nombre_usuario.grid(row=2, padx=(1, 10), pady=(14, 4))
-
+            
             label_contraseña = ttk.Label(new_user_window, text='Password ')
             
             label_contraseña.config(
             width=17, font=('Segoe UI', 10))
-            label_contraseña.grid(row=4, padx=(1, 10), pady=(14, 4))
+            
 
-        
             self.mi_sitio_web_add = tk.StringVar()
 
             entry_sitio_web = ttk.Entry(
             new_user_window, textvariable=self.mi_sitio_web_add)
             
             entry_sitio_web.config(width=30, font=('Segoe UI', 12))
-            entry_sitio_web.grid(
-            row=1, padx=(15, 16), columnspan=3)
-
+        
             self.mi_nombre_usuario_add = tk.StringVar()
 
             entry_nombre_usuario = ttk.Entry(
@@ -232,8 +232,6 @@ class Gui():
             
             entry_nombre_usuario.config(width=30,
                                     font=('Segoe UI', 12))
-            entry_nombre_usuario.grid(
-            row=3, padx=(16, 16), columnspan=3)
 
             mi_contrasena = generate_password()
             self.mi_contrasena_add = tk.StringVar()
@@ -242,24 +240,32 @@ class Gui():
             new_user_window, textvariable=self.mi_contrasena_add)
             entry_contrasena.insert(0, mi_contrasena)
             
-
             entry_contrasena.config(width=30,
                                 font=('Segoe UI', 12))
-            entry_contrasena.grid(
-            row=5, padx=(16, 16), columnspan=3)
-
+            
             boton_guardar = ttk.Button(
             new_user_window, text='Save', command=save_data)
-
-
-            boton_guardar.grid(
-            row=6, column=0,  padx=(30, 10), pady=(14, 10))
 
             boton_cancelar = ttk.Button(
             new_user_window, text='Cancel', command=destroy)
 
+            label_sitio_web.grid(
+                row=0, padx=(1, 10), pady=(14, 4))
+            label_nombre_usuario.grid(
+                row=2, padx=(1, 10), pady=(14, 4))
+            label_contraseña.grid(
+                row=4, padx=(1, 10), pady=(14, 4))
+            entry_sitio_web.grid(
+                row=1, padx=(15, 16), columnspan=3)
+            entry_nombre_usuario.grid(
+                row=3, padx=(16, 16), columnspan=3)
+            entry_contrasena.grid(
+                row=5, padx=(16, 16), columnspan=3)
+            boton_guardar.grid(
+                    row=6, column=0,  padx=(30, 10), pady=(14, 10))
             boton_cancelar.grid(
-            row=6, column=1,  padx=(0, 20), pady=(14, 10))
+                row=6, column=1,  padx=(0, 20), pady=(14, 10))
+    
 
         new_user_content()
 
@@ -287,12 +293,27 @@ class Gui():
         """
         Window for new users
         """
+
+        def save_data():
+            
+            user_data = user(
+                self.mi_sitio_web_edit.get(),
+                self.mi_nombre_usuario_edit.get(),
+               self.mi_contrasena_edit.get())
+            editar(user_data, int(self.tabla.item(self.tabla.selection())["text"]))
+            edit_user_window.destroy()
+            self.update_table("user_updated")
+            self.update_users_count()
+
+        def destroy():
+            edit_user_window.destroy()
+
         edit_user_window = ctk.CTkToplevel(self.frame)
-        edit_user_window.config(background=self.style.lookup('TFrame', 'background'))
         edit_user_window.title('Edit User')
+        edit_user_window.config(background=self.style.lookup('TFrame', 'background'))
         edit_user_window.iconbitmap('image/app-icon.ico')
         edit_user_window.resizable(0, 0)
-        style = ThemedStyle(edit_user_window)
+
 
         edit_user_window.geometry("310x250")
 
@@ -309,50 +330,32 @@ class Gui():
 
         edit_user_window.attributes("-topmost", True)
 
-        def save_data():
-            
-            user_data = user(
-                self.mi_sitio_web_edit.get(),
-                self.mi_nombre_usuario_edit.get(),
-               self.mi_contrasena_edit.get())
-            editar(user_data, int(self.tabla.item(self.tabla.selection())["text"]))
-            edit_user_window.destroy()
-            self.update_table("user_updated")
-            self.update_users_count()
-
-        def destroy():
-            edit_user_window.destroy()
-
         def edit_user_content():
 
             label_sitio_web = ttk.Label(edit_user_window, text='Web site')
-            style.configure(style='Equilux.TLabel')
             label_sitio_web.config(
             width=17, font=('Segoe UI', 10))
-            label_sitio_web.grid(row=0, padx=(1, 10), pady=(14, 4))
+            
 
             label_nombre_usuario = ttk.Label(
             edit_user_window, text='Username ')
-            style.configure(style='Equilux.TLabel')
             label_nombre_usuario.config(
             width=17, font=('Segoe UI', 10))
-            label_nombre_usuario.grid(row=2, padx=(1, 10), pady=(14, 4))
+            
 
             label_contraseña = ttk.Label(edit_user_window, text='Password ')
-            style.configure(style='Equilux.TLabel')
             label_contraseña.config(
             width=17, font=('Segoe UI', 10))
-            label_contraseña.grid(row=4, padx=(1, 10), pady=(14, 4))
+            
 
         
             self.mi_sitio_web_edit = tk.StringVar()
 
             entry_sitio_web = ttk.Entry(
             edit_user_window, textvariable=self.mi_sitio_web_edit)
-            style.configure(style='Equilux.TEntry')
+
             entry_sitio_web.config(width=30, font=('Segoe UI', 12))
-            entry_sitio_web.grid(
-            row=1, padx=(15, 16), columnspan=3)
+            
 
             entry_sitio_web.insert(0,self.tabla.item(self.tabla.selection())['values'][0])
 
@@ -360,12 +363,8 @@ class Gui():
 
             entry_nombre_usuario = ttk.Entry(
             edit_user_window, textvariable=self.mi_nombre_usuario_edit)
-            style.configure(style='Equilux.TEntry')
-            entry_nombre_usuario.config(width=30,
-                                    font=('Segoe UI', 12))
-            entry_nombre_usuario.grid(
-            row=3, padx=(16, 16), columnspan=3)
-
+            entry_nombre_usuario.config(width=30, font=('Segoe UI', 12))
+            
             entry_nombre_usuario.insert(0,self.tabla.item(self.tabla.selection())['values'][1])
 
             mi_contrasena = generate_password()
@@ -374,37 +373,32 @@ class Gui():
             entry_contrasena = ttk.Entry(
             edit_user_window, textvariable=self.mi_contrasena_edit)
 
-            style.configure(
-            style='Equilux.TEntry')
-
-            entry_contrasena.config(width=30,
-                                font=('Segoe UI', 12))
-            entry_contrasena.grid(
-            row=5, padx=(16, 16), columnspan=3)
-
+            entry_contrasena.config(width=30, font=('Segoe UI', 12))
+            
             entry_contrasena.insert(0,self.tabla.item(self.tabla.selection())['values'][2])
 
             boton_guardar = ttk.Button(
             edit_user_window, text='Save', command=save_data)
 
-            style.configure("RoundedButton.TButton", width=25, font=('Segoe UI', 12, 'bold'),
-                        cursor='hand2', focuscolor='none', borderwidth=2,
-                        bd=2, relief="solid", anchor='center',
-                        highlightcolor='#35BD6F', highlightbackground='#35BD6F')
-
-            boton_guardar.grid(
-            row=6, column=0,  padx=(30, 10), pady=(14, 10))
-
             boton_cancelar = ttk.Button(
             edit_user_window, text='Cancel', command=destroy)
 
-            style.configure("RoundedButton.TButton", width=25, font=('Segoe UI', 12, 'bold'),
-                        cursor='hand2', focuscolor='none', borderwidth=2,
-                        bd=2, relief="solid", anchor='center',
-                        highlightcolor='#35BD6F', highlightbackground='#35BD6F')
-
+            label_sitio_web.grid(
+                row=0, padx=(1, 10), pady=(14, 4))
+            label_nombre_usuario.grid(
+                row=2, padx=(1, 10), pady=(14, 4))
+            label_contraseña.grid(
+                row=4, padx=(1, 10), pady=(14, 4))
+            entry_sitio_web.grid(
+                row=1, padx=(15, 16), columnspan=3)
+            entry_nombre_usuario.grid(
+                row=3, padx=(16, 16), columnspan=3)
+            entry_contrasena.grid(
+                row=5, padx=(16, 16), columnspan=3)
+            boton_guardar.grid(
+                row=6, column=0,  padx=(30, 10), pady=(14, 10))
             boton_cancelar.grid(
-            row=6, column=1,  padx=(0, 20), pady=(14, 10))
+                row=6, column=1,  padx=(0, 20), pady=(14, 10))
 
         edit_user_content()   
 
