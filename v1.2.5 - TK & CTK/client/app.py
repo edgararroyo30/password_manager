@@ -4,6 +4,7 @@ Create the Graphic user interface
 
 import customtkinter as ctk
 from client.gui import Gui
+import os
 
 
 class App(ctk.CTk):
