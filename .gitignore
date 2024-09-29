@@ -1,3 +1,4 @@
+PasswordManager.spec
 virtual
 v1.2.5
 image
@@ -11,4 +12,4 @@ code_image.jpg
 installer-icon.ico
 app-icon.ico
 build/
-.spec
+dist/
