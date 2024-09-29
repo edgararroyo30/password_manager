@@ -13,3 +13,4 @@ installer-icon.ico
 app-icon.ico
 build/
 dist/
+password_manager_installer.nsi
