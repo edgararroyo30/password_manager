@@ -9,7 +9,7 @@ from ttkthemes import ThemedStyle
 from client.frame_builder import FrameBuilder
 from model.admin_dao import cuenta_id, listar_usuarios, save, user, eliminar, editar, code_validation, insert_code, check_code
 from protect.password_generator import generate_password
-
+import os
 
 class Gui():
     """
@@ -21,7 +21,7 @@ class Gui():
         """
         self.frame = frame
         self.detached_items = []
-        
+        self.base_dir = os.path.dirname(os.path.abspath(__file__))
         self.access_code()
         
     def styles(self):
@@ -180,7 +180,8 @@ class Gui():
         new_user_window = ctk.CTkToplevel(self.frame)
         new_user_window.config(background=self.style.lookup('TFrame', 'background'))
         new_user_window.title('Add User')
-        new_user_window.iconbitmap('image/app-icon.ico')
+
+        new_user_window.iconbitmap(os.path.join(self.base_dir, '..','image','app-icon.ico'))
         new_user_window.resizable(0, 0)
 
         new_user_window.geometry("310x250")
@@ -311,7 +312,7 @@ class Gui():
         edit_user_window = ctk.CTkToplevel(self.frame)
         edit_user_window.title('Edit User')
         edit_user_window.config(background=self.style.lookup('TFrame', 'background'))
-        edit_user_window.iconbitmap('image/app-icon.ico')
+        edit_user_window.iconbitmap(os.path.join(self.base_dir, '..','image','app-icon.ico'))
         edit_user_window.resizable(0, 0)
 
 
