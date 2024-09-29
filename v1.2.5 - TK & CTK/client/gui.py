@@ -471,10 +471,16 @@ class Gui():
             def save_code():
 
                 if self.user_code.get() == self.confirm_code.get():
-                    insert_code(self.confirm_code.get())
-                    access_frame.destroy()
-                    self.frame.unbind("<Return>")
-                    self.content()
+                    if self.confirm_code.get() is None or self.confirm_code.get() == "":
+                        titulo = 'Create acess code'
+                        mensaje = "No code was given"
+                        messagebox.showerror(titulo, mensaje)
+
+                    else:
+                        insert_code(self.confirm_code.get())
+                        access_frame.destroy()
+                        self.frame.unbind("<Return>")
+                        self.content()
                 else:
                     titulo = 'Create acess code'
                     mensaje = "The code didn't match"
