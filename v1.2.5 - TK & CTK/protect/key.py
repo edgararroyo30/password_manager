@@ -1,35 +1,38 @@
 import json
-
+import keyring
+import base64
 
 class Keys():
 
     def __init__(self):
         pass
 
-    def public_table_key():
-        with open("keys/keys.json", "r") as file:
-            config = json.load(file)
-        key = config["PUBLIC_TABLE_KEY"]
+    def public_table_key(service_name):
+        public_key_encoded = keyring.get_password(service_name, 'public_key')
 
-        return key
+        if public_key_encoded:
+            public_key = public_key_encoded
+            return public_key
+        else:
+            raise EnvironmentError("Keys not found in Windows Credential Manager.")
 
-    def private_db_key():
-        with open("keys/keys.json", "r") as file:
-            config = json.load(file)
-        key = config["PRIVATE_DB_KEY"]
 
-        return key
+    def private_table_key(service_name):
+        key_name = "private_key"
+        key_parts = []
+        i = 0
 
-    def public_db_key():
-        with open("keys/keys.json", "r") as file:
-            config = json.load(file)
-        key = config["PUBLIC_DB_KEY"]
+        while True:
+            part = keyring.get_password(service_name, f'{key_name}_part_{i}')
+            if part is None:
+                break
+            key_parts.append(base64.b64decode(part.encode('utf-8')))
+            i += 1
 
-        return key
+        if not key_parts:
+            raise EnvironmentError(f"No parts of the {key_name} key found in Windows Credential Manager.")
+        
+        return b''.join(key_parts)
 
-    def private_table_key():
-        with open("keys/keys.json", "r") as file:
-            config = json.load(file)
-        key = config["PRIVATE_TABLE_KEY"]
 
-        return key
+#print(Keys.public_table_key("Password_keys"))
