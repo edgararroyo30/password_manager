@@ -34,5 +34,3 @@ class Keys():
         
         return b''.join(key_parts)
 
-
-#print(Keys.public_table_key("Password_keys"))
