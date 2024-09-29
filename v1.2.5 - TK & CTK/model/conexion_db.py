@@ -1,9 +1,10 @@
 import sqlite3
-
+import os
 
 class DBConection:
     def __init__(self):
-        self.base_datos = 'database/users.db'
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.base_datos = os.path.join(base_dir,'..','database', 'users.db')
         self.conexion = sqlite3.connect(self.base_datos)
         self.cursor = self.conexion.cursor()
 
@@ -14,7 +15,8 @@ class DBConection:
 
 class AccescodeConection:
     def __init__(self):
-        self.base_datos = 'database/access_code.db'
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.base_datos = os.path.join(base_dir, '..', 'database', 'access_code.db')
         self.conexion = sqlite3.connect(self.base_datos)
         self.cursor = self.conexion.cursor()
 
