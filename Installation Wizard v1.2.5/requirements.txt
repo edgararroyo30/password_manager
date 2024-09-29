@@ -1,4 +1,0 @@
-ttkthemes
-pillow
-cryptography
-pywin32
