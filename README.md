@@ -31,3 +31,18 @@ This project is a **password manager** built using **Tkinter** and **CustomTkint
 - **Add a new password**: Enter credentials and securely store them.
 - **Retrieve passwords**: Enter the master password to access stored passwords.
 - **Update or delete passwords**: Manage your passwords easily with an intuitive interface.
+
+## Login window
+![image](https://github.com/user-attachments/assets/3457c988-4e81-41fd-8fee-66a403a2a59a)
+
+## Main window
+![image](https://github.com/user-attachments/assets/efc19031-40e8-4a2f-983e-ff441cb0332a)
+
+## New user window
+![image](https://github.com/user-attachments/assets/67db7e6a-039f-460f-b658-bfdfd9ce6a8d)
+
+## Edit user window
+![image](https://github.com/user-attachments/assets/c6d24be7-a9ae-40ab-b69a-e11ed70b0458)
+
+
+
