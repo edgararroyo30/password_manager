@@ -1,0 +1,8 @@
+watchdog
+cryptography
+bcrypt
+customtkinter
+pyperclip
+ttkthemes
+keyring
+pyinstaller
