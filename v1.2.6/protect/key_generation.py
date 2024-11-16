@@ -38,7 +38,7 @@ class KeyGeneration():
         for i, part in enumerate(key_parts):
             keyring.set_password(service_name, f'{key_name}_part_{i}', base64.b64encode(part).decode('utf-8'))
 
-        print(f"{len(key_parts)} parts of the {key_name} key have been securely stored in Windows Credential Manager.")
+        #print(f"{len(key_parts)} parts of the {key_name} key have been securely stored in Windows Credential Manager.")
 
     def check_keys_exist(self,service_name):
         private_key = keyring.get_password(service_name, "private_key")
@@ -54,8 +54,8 @@ class KeyGeneration():
         if not self.check_keys_exist(service_name):
             self.store_large_encryption_key (service_name, "private_key", private_key)
             keyring.set_password(service_name, "public_key", public_key)
-            print("Keys have been securely stored.")
-            print(keyring.get_password(service_name, "private_key"))
+            #print("Keys have been securely stored.")
+            #print(keyring.get_password(service_name, "private_key"))
         else: 
             print("Keys already exist. Skipping storage.")
 

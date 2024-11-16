@@ -7,7 +7,7 @@ from tkinter import ttk, messagebox
 import customtkinter as ctk
 from ttkthemes import ThemedStyle
 from client.frame_builder import FrameBuilder
-from model.admin_dao import cuenta_id, listar_usuarios, save, user, eliminar, editar, code_validation, insert_code, check_code
+from model.admin_dao import cuenta_id, listar_usuarios, save, user, eliminar, editar, code_validation, insert_code, check_code 
 from protect.password_generator import generate_password
 import os
 
@@ -62,6 +62,9 @@ class Gui():
                         sticky='nse', padx=10, pady=(0, 10))
 
     def update_table(self, status):
+        """
+        Updates the table fetching the data from the DB, recieve a string as an argument to determine if the user is getting deleted or updated
+        """
         children = self.tabla.get_children()
         
         if status == "user_deleted" or status == "user_updated":
@@ -154,17 +157,22 @@ class Gui():
         self.pop_menu()
 
     def update_users_count(self):
+        """
+        Update the label that store the amount of stored accounts
+        """
         user_count = (f"{cuenta_id()} saved passwords")
         self.label_usuarios.config(
             width=30, font=('Segoe UI', 10, 'bold'),text=user_count)
 
     def new_user(self):
         """
-        Window for new users
+        Widgets and frame for the new users window, incluting methods for storing the data
         """
 
         def save_data():
-            
+            """
+            Send the user data to be handled by the DB methods and updates the table inmediatly 
+            """
             user_data = user(
                 self.mi_sitio_web_add.get(),
                 self.mi_nombre_usuario_add.get(),
@@ -175,6 +183,9 @@ class Gui():
             self.update_users_count()
 
         def destroy():
+            """
+            Destroy the new user window
+            """
             new_user_window.destroy()
 
         new_user_window = ctk.CTkToplevel(self.frame)
@@ -201,6 +212,9 @@ class Gui():
 
 
         def new_user_content():
+            """
+            All window widgets for new user creation
+            """
 
             label_sitio_web = ttk.Label(new_user_window, text='Web site')
             
@@ -271,7 +285,10 @@ class Gui():
         new_user_content()
 
     def search_and_highlight(self, tree, search_string):
-        
+        """
+        Only shows on the gui the users that match with the data on the entry, 
+        send the not matching user to a list to be retrieved later withour duplicates
+        """
         if search_string == "":
             
             for item in self.detached_items:
@@ -292,11 +309,13 @@ class Gui():
                 
     def edit_user(self):
         """
-        Window for new users
+        Widgets and frame for the edit users window, incluting methods for storing the data
         """
 
         def save_data():
-            
+            """
+            Send the user data to be handled by the DB methods and updates the table inmediatly 
+            """
             user_data = user(
                 self.mi_sitio_web_edit.get(),
                 self.mi_nombre_usuario_edit.get(),
@@ -307,6 +326,9 @@ class Gui():
             self.update_users_count()
 
         def destroy():
+            """
+            Destroy yhe edit user window
+            """
             edit_user_window.destroy()
 
         edit_user_window = ctk.CTkToplevel(self.frame)
@@ -332,7 +354,9 @@ class Gui():
         edit_user_window.attributes("-topmost", True)
 
         def edit_user_content():
-
+            """
+            All the widgets for editing users
+            """
             label_sitio_web = ttk.Label(edit_user_window, text='Web site')
             label_sitio_web.config(
             width=17, font=('Segoe UI', 10))
@@ -404,13 +428,27 @@ class Gui():
         edit_user_content()   
 
     def pop_menu(self):
+        """
+        Creates and locate the pop up menu on the table
+        """
         def show_menu (event):
+            """
+            Post the menu on the coordinates that the customer clicked
+            """
             self.popup_menu.post(event.x_root, event.y_root)
+
         def copy_data():
+            """
+            Copy the password to the clipboard from the selected user
+            """
             password = self.tabla.item(
                 self.tabla.selection())['values'][2]
             pyperclip.copy(password)
+
         def delete_data():
+            """
+            Delete the user data that the was selected
+            """
             user_id = self.tabla.item(self.tabla.selection())["text"]
             eliminar(user_id)
             self.update_users_count()
@@ -431,14 +469,23 @@ class Gui():
         self.tabla.bind("<Button-3>", show_menu)
 
     def access_code(self):
+        """
+        Determines wether a pass code had already been saved and display a frame based in the status
+        """
         self.styles()
         access_frame = FrameBuilder(self.frame)
         access_frame.configure( width=624, height=250)
         access_frame.grid(row=0, column=0, padx=(0, 0), pady=(0, 0))
 
         def code_exists():
+            """
+            Frame for when the code already exist
+            """
 
             def send_code():
+                """
+                Send the code to the DB to be handled
+                """
                 if check_code(self.input_code.get()) is True:
                     access_frame.destroy()
                     self.frame.unbind("<Return>")
@@ -463,13 +510,21 @@ class Gui():
             space.grid(padx=(630,0), pady=(300,0))
 
             def on_click(event):
+                """
+                Bind the return key to send the code
+                """
                 send_code()
             self.frame.bind("<Return>", on_click)
 
         def create_code():
+            """
+            Frame for when the code don't exist
+            """
 
             def save_code():
-
+                """
+                Send the code to the DB to be handled
+                """
                 if self.user_code.get() == self.confirm_code.get():
                     if self.confirm_code.get() is None or self.confirm_code.get() == "":
                         titulo = 'Create acess code'
@@ -506,6 +561,9 @@ class Gui():
             space.grid(padx=(630,0), pady=(300,0))
 
             def on_click(event):
+                """
+                Bind the return key to send the code
+                """
                 save_code()
             self.frame.bind("<Return>", on_click)
 

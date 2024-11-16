@@ -14,9 +14,15 @@ def main():
     app.mainloop()
 
 def create_keys():
+    """
+    Calls the function to generate the keys for DB encryption
+    """
     generator = KeyGeneration()
     
 if __name__ == '__main__':
+    """
+    Calls the main methods to start the app
+    """
     create_table()
     create_table_codigo()
     create_keys()

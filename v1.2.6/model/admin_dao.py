@@ -27,8 +27,10 @@ def create_table():
     conexion.cursor.execute(sql)
     conexion.cerrar()
 
-
 def delete_table():
+    """ 
+    
+    """
     conexion = DBConection()
 
     sql = 'DROP TABLE encrypted_data'
